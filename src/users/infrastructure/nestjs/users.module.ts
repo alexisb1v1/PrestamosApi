@@ -1,0 +1,45 @@
+import { Module } from '@nestjs/common';
+import { CqrsModule } from '@nestjs/cqrs';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { CreateUserHandler } from '../../application/commands/v1/handlers/create-user.handler';
+import { LoginHandler } from '../../application/queries/v1/handlers/login.handler';
+import { UserRepository } from '../../domain/repositories/user.repository';
+import { PersonRepository } from '../../domain/repositories/person.repository';
+import { PostgresUserRepository } from '../repositories/postgres-user.repository';
+import { PostgresPersonRepository } from '../repositories/postgres-person.repository';
+import { UserEntity } from '../repositories/entities/user.entity';
+import { PersonEntity } from '../repositories/entities/person.entity';
+import { CreateUserController } from '../../interfaces/http/v1/create-user/create-user.controller';
+import { LoginController } from '../../interfaces/http/v1/login/login.controller';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
+@Module({
+    imports: [
+        CqrsModule,
+        TypeOrmModule.forFeature([UserEntity, PersonEntity]),
+        JwtModule.registerAsync({
+            imports: [ConfigModule],
+            useFactory: async (configService: ConfigService) => ({
+                secret: configService.get<string>('JWT_SECRET'),
+                signOptions: { expiresIn: '24h' },
+            }),
+            inject: [ConfigService],
+        }),
+    ],
+    controllers: [CreateUserController, LoginController],
+    providers: [
+        CreateUserHandler,
+        LoginHandler,
+        {
+            provide: UserRepository,
+            useClass: PostgresUserRepository,
+        },
+        {
+            provide: PersonRepository,
+            useClass: PostgresPersonRepository,
+        },
+    ],
+    exports: [UserRepository, PersonRepository],
+})
+export class UsersModule { }
