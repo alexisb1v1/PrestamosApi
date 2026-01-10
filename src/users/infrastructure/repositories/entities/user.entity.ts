@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { PersonEntity } from './person.entity';
 
 @Entity('user')
 export class UserEntity {
@@ -19,4 +20,8 @@ export class UserEntity {
 
     @Column({ name: 'id_people', type: 'bigint' })
     idPeople: string;
+
+    @ManyToOne(() => PersonEntity)
+    @JoinColumn({ name: 'id_people' })
+    person: PersonEntity;
 }

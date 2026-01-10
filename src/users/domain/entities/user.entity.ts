@@ -1,3 +1,5 @@
+import { Person } from './person.entity';
+
 export class User {
     id?: string; // Optional (auto-generated)
     username: string;
@@ -5,6 +7,7 @@ export class User {
     profile: string;
     status: string;
     idPeople: number;
+    person?: Person;
 
     constructor(
         username: string,

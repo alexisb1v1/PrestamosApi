@@ -45,19 +45,23 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
             const user = await this.userRepository.findByUsername(username);
 
             if (!user) {
-                return new LoginResult(false, 'Invalid credentials');
+                return new LoginResult(false, 'Contraseña o usuario incorrecto');
+            }
+
+            if (user.status !== 'ACTIVE') {
+                return new LoginResult(false, 'Usuario inactivo');
             }
 
             // 2. Verify password hash
             if (user.passwordHash !== passwordHash) {
-                return new LoginResult(false, 'Invalid credentials');
+                return new LoginResult(false, 'Contraseña o usuario incorrecto');
             }
 
             // 3. Get person data
             const person = await this.personRepository.findById(user.idPeople.toString());
 
             if (!person) {
-                return new LoginResult(false, 'User data incomplete');
+                return new LoginResult(false, 'Datos del usuario incompletos');
             }
 
             // 4. Generate JWT token
@@ -71,7 +75,7 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
             const token = this.jwtService.sign(payload);
 
             // 5. Return user with person data and token
-            return new LoginResult(true, 'Login successful', token, {
+            return new LoginResult(true, 'Login exitoso', token, {
                 id: user.id!,
                 username: user.username,
                 profile: user.profile,
@@ -86,7 +90,7 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
                 },
             });
         } catch (error) {
-            return new LoginResult(false, `Login failed: ${error.message}`);
+            return new LoginResult(false, `Login fallido: ${error.message}`);
         }
     }
 }

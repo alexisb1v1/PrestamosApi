@@ -18,6 +18,12 @@ export class PostgresPersonRepository implements PersonRepository {
         return saved.id;
     }
 
+    async findByDocument(documentType: string, documentNumber: string): Promise<Person | null> {
+        const entity = await this.typeOrmRepository.findOneBy({ documentType, documentNumber });
+        if (!entity) return null;
+        return this.toDomain(entity);
+    }
+
     async findByDocumentNumber(documentNumber: string): Promise<Person | null> {
         const entity = await this.typeOrmRepository.findOneBy({ documentNumber });
         if (!entity) return null;
