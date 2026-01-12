@@ -21,7 +21,7 @@ export class LoginResult {
                 documentNumber: string;
                 firstName: string;
                 lastName: string;
-                birthday: Date;
+                birthday?: Date;
             };
         },
     ) { }

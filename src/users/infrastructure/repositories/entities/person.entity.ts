@@ -17,6 +17,6 @@ export class PersonEntity {
     @Column({ name: 'last_name', length: 50 })
     lastName: string;
 
-    @Column({ type: 'date' })
+    @Column({ type: 'date', nullable: true })
     birthday: Date;
 }

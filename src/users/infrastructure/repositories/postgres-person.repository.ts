@@ -45,7 +45,7 @@ export class PostgresPersonRepository implements PersonRepository {
         entity.documentNumber = person.documentNumber;
         entity.firstName = person.firstName;
         entity.lastName = person.lastName;
-        entity.birthday = person.birthday;
+        entity.birthday = person.birthday!;
         return entity;
     }
 

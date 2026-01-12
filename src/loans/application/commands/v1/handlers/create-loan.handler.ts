@@ -1,7 +1,8 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateLoanCommand } from '../create-loan.command';
-import { Inject } from '@nestjs/common';
+import { Inject, HttpException, HttpStatus } from '@nestjs/common';
 import { LoanRepository } from '../../../../domain/repositories/loan.repository';
+import { PersonRepository } from '../../../../../users/domain/repositories/person.repository';
 import { Loan } from '../../../../domain/entities/loan.entity';
 
 @CommandHandler(CreateLoanCommand)
@@ -9,14 +10,41 @@ export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
     constructor(
         @Inject(LoanRepository)
         private readonly loanRepository: LoanRepository,
+        @Inject(PersonRepository)
+        private readonly personRepository: PersonRepository,
     ) { }
 
     async execute(command: CreateLoanCommand): Promise<void> {
-        const { idPeople, startDate, endDate, amount, interest, fee, userId } = command;
+        const { idPeople, amount, userId, address } = command;
 
-        // Business logic...
+        // 1. Calculations
+        const interest = amount * 0.20;
+        const totalAmount = amount + interest;
+        const days = 24;
+        const fee = totalAmount / days;
 
-        const status = 'PENDING';
+        // 2. Start Date (Tomorrow, skip Sunday)
+        const startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        startDate.setDate(startDate.getDate() + 1);
+
+        if (startDate.getDay() === 0) { // Sunday
+            startDate.setDate(startDate.getDate() + 1); // Monday
+        }
+
+        // 3. End Date (work days, skip Sundays)
+        const endDate = new Date(startDate);
+        let workDaysAdded = 0;
+        while (workDaysAdded < days) {
+            endDate.setDate(endDate.getDate() + 1);
+            if (endDate.getDay() !== 0) { // Not Sunday
+                workDaysAdded++;
+            }
+        }
+
+        const createdAt = new Date();
+        const status = 'Activo';
+
         const newLoan = new Loan(
             idPeople,
             startDate,
@@ -24,9 +52,11 @@ export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
             amount,
             interest,
             fee,
-            new Date(),
+            days,
+            createdAt,
             userId,
-            status
+            status,
+            address
         );
 
         await this.loanRepository.save(newLoan);

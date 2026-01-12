@@ -14,13 +14,9 @@ export class CreateLoanController {
     @ApiOperation({ summary: 'Apply for a new loan' })
     @ApiResponse({ status: 201, description: 'Loan application created successfully.' })
     async create(@Body() createLoanDto: CreateLoanDto): Promise<void> {
-        const { idPeople, startDate, endDate, amount, interest, fee, userId } = createLoanDto;
+        const { idPeople, amount, userId, address } = createLoanDto;
 
-        // Convert strings to Dates
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        const command = new CreateLoanCommand(idPeople, start, end, amount, interest, fee, userId);
+        const command = new CreateLoanCommand(idPeople, amount, userId, address);
 
         await this.commandBus.execute(command);
     }

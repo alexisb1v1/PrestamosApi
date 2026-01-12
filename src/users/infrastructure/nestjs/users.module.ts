@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CreateUserHandler } from '../../application/commands/v1/handlers/create-user.handler';
+import { CreatePersonHandler } from '../../application/commands/v1/handlers/create-person.handler';
 import { UpdateUserHandler } from '../../application/commands/v1/handlers/update-user.handler';
 import { DeleteUserHandler } from '../../application/commands/v1/handlers/delete-user.handler';
 import { LoginHandler } from '../../application/queries/v1/handlers/login.handler';
@@ -37,6 +38,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     controllers: [CreateUserController, LoginController, UserController, PeopleController],
     providers: [
         CreateUserHandler,
+        CreatePersonHandler,
         UpdateUserHandler,
         DeleteUserHandler,
         LoginHandler,
