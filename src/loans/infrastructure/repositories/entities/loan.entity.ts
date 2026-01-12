@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { PersonEntity } from '../../../../users/infrastructure/repositories/entities/person.entity';
 import { UserEntity } from '../../../../users/infrastructure/repositories/entities/user.entity';
+import { LoanInstallmentEntity } from './loan-installment.entity';
 
 @Entity('loans')
 export class LoanEntity {
@@ -47,4 +48,7 @@ export class LoanEntity {
 
     @Column({ length: 255, nullable: true })
     address: string;
+
+    @OneToMany(() => LoanInstallmentEntity, (installment) => installment.loan)
+    installments: LoanInstallmentEntity[];
 }

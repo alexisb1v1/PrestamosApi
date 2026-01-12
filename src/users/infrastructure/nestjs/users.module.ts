@@ -21,6 +21,8 @@ import { UserController } from '../../interfaces/http/v1/user.controller';
 import { PeopleController } from '../../interfaces/http/v1/people.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from '../security/jwt-auth.guard';
 
 @Module({
     imports: [
@@ -30,7 +32,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
                 secret: configService.get<string>('JWT_SECRET'),
-                signOptions: { expiresIn: '24h' },
+                signOptions: { expiresIn: '10m' },
             }),
             inject: [ConfigService],
         }),
@@ -52,6 +54,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         {
             provide: PersonRepository,
             useClass: PostgresPersonRepository,
+        },
+        {
+            provide: APP_GUARD,
+            useClass: JwtAuthGuard,
         },
     ],
     exports: [UserRepository, PersonRepository],

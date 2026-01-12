@@ -4,8 +4,10 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginDto } from './dto/login.request.dto';
 import { LoginResponseDto } from './dto/login.response.dto';
 import { LoginQuery } from '../../../../application/queries/v1/login.query';
+import { Public } from '../../../../infrastructure/security/public.decorator';
 
 @ApiTags('Users')
+@Public()
 @Controller('api/v1/users')
 export class LoginController {
     constructor(private readonly queryBus: QueryBus) { }

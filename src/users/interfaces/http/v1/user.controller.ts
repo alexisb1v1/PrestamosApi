@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Put, HttpStatus, HttpException, Query } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ListUsersQuery } from '../../../application/queries/v1/list-users.query';
 import { GetUserQuery } from '../../../application/queries/v1/get-user.query';
 import { UpdateUserCommand } from '../../../application/commands/v1/update-user.command';
@@ -10,6 +10,7 @@ import { UserResponseDto } from './dto/user.response.dto';
 import { User } from '../../../domain/entities/user.entity';
 
 @ApiTags('Users')
+@ApiBearerAuth()
 @Controller('api/v1/users')
 export class UserController {
     constructor(

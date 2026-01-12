@@ -41,6 +41,12 @@ export class LoanResponseDto {
     @ApiProperty({ required: false })
     collectorName?: string;
 
+    @ApiProperty({ example: 1, description: 'Indicador si ya se realizó el pago hoy (1: Si, 0: No)' })
+    paidToday: number;
+
+    @ApiProperty({ example: 450.00, description: 'Monto total restante del préstamo (Capital + Interés - Abonos)' })
+    remainingAmount: number;
+
     constructor(loan: Loan) {
         this.id = loan.id;
         this.startDate = loan.startDate;
@@ -52,6 +58,8 @@ export class LoanResponseDto {
         this.createdAt = loan.createdAt;
         this.status = loan.status;
         this.address = loan.address;
+        this.paidToday = loan.paidToday ?? 0;
+        this.remainingAmount = loan.remainingAmount ?? (loan.amount + loan.interest);
 
         if (loan.person) {
             this.documentNumber = loan.person.documentNumber;

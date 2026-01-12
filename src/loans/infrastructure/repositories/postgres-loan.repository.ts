@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { Loan } from '../../domain/entities/loan.entity';
+import { LoanInstallment } from '../../domain/entities/loan-installment.entity';
 import { Person } from '../../../users/domain/entities/person.entity';
 import { User } from '../../../users/domain/entities/user.entity';
 import { LoanEntity } from './entities/loan.entity';
@@ -38,7 +39,20 @@ export class PostgresLoanRepository implements LoanRepository {
     async findAllWithFilters(userId?: number, documentNumber?: string): Promise<Loan[]> {
         const queryBuilder = this.typeOrmRepository.createQueryBuilder('loan')
             .leftJoinAndSelect('loan.person', 'person')
-            .leftJoinAndSelect('loan.user', 'user');
+            .leftJoinAndSelect('loan.user', 'user')
+            .addSelect(subQuery => {
+                return subQuery
+                    .select('COUNT(*)')
+                    .from('loan_installments', 'installment')
+                    .where('installment.loan_id = loan.id')
+                    .andWhere('installment.installment_date::date = CURRENT_DATE');
+            }, 'paidTodayCount')
+            .addSelect(subQuery => {
+                return subQuery
+                    .select('SUM(installment.amount)')
+                    .from('loan_installments', 'installment')
+                    .where('installment.loan_id = loan.id');
+            }, 'installmentsSum');
 
         if (userId) {
             queryBuilder.andWhere('loan.userId = :userId', { userId });
@@ -48,8 +62,51 @@ export class PostgresLoanRepository implements LoanRepository {
             queryBuilder.andWhere('person.documentNumber = :documentNumber', { documentNumber });
         }
 
-        const entities = await queryBuilder.getMany();
-        return entities.map(entity => this.toDomain(entity));
+        const { entities, raw } = await queryBuilder.getRawAndEntities();
+
+        return entities.map((entity, index) => {
+            const loan = this.toDomain(entity);
+            loan.paidToday = parseInt(raw[index].paidTodayCount) > 0 ? 1 : 0;
+            const installmentsSum = parseFloat(raw[index].installmentsSum || '0');
+            loan.remainingAmount = (loan.amount + loan.interest) - installmentsSum;
+            return loan;
+        });
+    }
+
+    async findActiveByPersonId(personId: string): Promise<Loan | null> {
+        const entity = await this.typeOrmRepository.findOne({
+            where: {
+                idPeople: personId,
+                status: 'Activo'
+            }
+        });
+
+        if (!entity) return null;
+        return this.toDomain(entity);
+    }
+
+    async findWithInstallments(id: string): Promise<Loan | null> {
+        const entity = await this.typeOrmRepository.findOne({
+            where: { id },
+            relations: ['person', 'user', 'installments', 'installments.user']
+        });
+
+        if (!entity) return null;
+
+        const loan = this.toDomain(entity);
+        if (entity.installments) {
+            loan.installments = entity.installments.map(inst => new LoanInstallment(
+                inst.loanId,
+                inst.installmentDate,
+                Number(inst.amount),
+                inst.userId,
+                inst.status,
+                inst.id,
+                inst.user?.username
+            ));
+        }
+
+        return loan;
     }
 
     private toEntity(loan: Loan): LoanEntity {

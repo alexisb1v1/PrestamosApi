@@ -1,11 +1,12 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { ListLoansQuery } from '../../../../application/queries/v1/list-loans.query';
 import { LoanResponseDto } from '../dto/loan-response.dto';
 import { Loan } from '../../../../domain/entities/loan.entity';
 
 @ApiTags('Loans')
+@ApiBearerAuth()
 @Controller('api/v1/loans')
 export class ListLoansController {
     constructor(private readonly queryBus: QueryBus) { }

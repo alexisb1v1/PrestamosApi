@@ -17,6 +17,15 @@ export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
     async execute(command: CreateLoanCommand): Promise<void> {
         const { idPeople, amount, userId, address } = command;
 
+        // 0. Check if the person already has an active loan
+        const activeLoan = await this.loanRepository.findActiveByPersonId(idPeople.toString());
+        if (activeLoan) {
+            throw new HttpException(
+                `La persona ya tiene un préstamo activo No se puede registrar uno nuevo.`,
+                HttpStatus.BAD_REQUEST
+            );
+        }
+
         // 1. Calculations
         const interest = amount * 0.20;
         const totalAmount = amount + interest;

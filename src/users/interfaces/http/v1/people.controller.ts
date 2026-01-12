@@ -1,12 +1,13 @@
 import { Controller, Get, Post, Body, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { FindPersonQuery } from '../../../application/queries/v1/find-person.query';
 import { CreatePersonCommand } from '../../../application/commands/v1/create-person.command';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { Person } from '../../../domain/entities/person.entity';
 
 @ApiTags('People')
+@ApiBearerAuth()
 @Controller('api/v1/people')
 export class PeopleController {
     constructor(

@@ -5,6 +5,8 @@ export interface LoanRepository {
     findAll(): Promise<Loan[]>;
     findById(id: string): Promise<Loan | null>;
     findAllWithFilters(userId?: number, documentNumber?: string): Promise<Loan[]>;
+    findActiveByPersonId(personId: string): Promise<Loan | null>;
+    findWithInstallments(id: string): Promise<Loan | null>;
 }
 
 export const LoanRepository = Symbol('LoanRepository');

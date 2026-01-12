@@ -1,11 +1,12 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateLoanDto } from './dto/create-loan.request.dto';
 import { CreateLoanResponseDto } from './dto/create-loan.response.dto';
 import { CreateLoanCommand } from '../../../../application/commands/v1/create-loan.command';
 
 @ApiTags('Loans')
+@ApiBearerAuth()
 @Controller('api/v1/loans')
 export class CreateLoanController {
     constructor(private readonly commandBus: CommandBus) { }
