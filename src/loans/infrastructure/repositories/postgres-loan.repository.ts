@@ -30,45 +30,58 @@ export class PostgresLoanRepository implements LoanRepository {
     async findById(id: string): Promise<Loan | null> {
         const entity = await this.typeOrmRepository.findOne({
             where: { id },
-            relations: ['person', 'user']
+            relations: ['person', 'user'],
         });
+
         if (!entity) return null;
-        return this.toDomain(entity);
+
+        const loan = this.toDomain(entity);
+        return loan;
     }
 
     async findAllWithFilters(userId?: number, documentNumber?: string): Promise<Loan[]> {
-        const queryBuilder = this.typeOrmRepository.createQueryBuilder('loan')
+        const qb = this.typeOrmRepository
+            .createQueryBuilder('loan')
             .leftJoinAndSelect('loan.person', 'person')
             .leftJoinAndSelect('loan.user', 'user')
-            .addSelect(subQuery => {
-                return subQuery
-                    .select('COUNT(*)')
-                    .from('loan_installments', 'installment')
-                    .where('installment.loan_id = loan.id')
-                    .andWhere('installment.installment_date::date = CURRENT_DATE');
-            }, 'paidTodayCount')
-            .addSelect(subQuery => {
-                return subQuery
-                    .select('SUM(installment.amount)')
-                    .from('loan_installments', 'installment')
-                    .where('installment.loan_id = loan.id');
-            }, 'installmentsSum');
+            .leftJoin('loan.installments', 'installment')
+            .addSelect('COALESCE(SUM(installment.amount), 0)', 'installmentsSum')
+            .addSelect(
+                `
+      MAX(
+        CASE WHEN installment.installment_date::date =
+          (NOW() AT TIME ZONE 'America/Lima')::date
+        THEN 1 ELSE 0 END
+      )
+      `,
+                'paidToday'
+            )
+            .addSelect(
+                `
+      CASE WHEN (NOW() AT TIME ZONE 'America/Lima')::date
+        BETWEEN loan.start_date::date AND loan.end_date::date
+      THEN 1 ELSE 0 END
+      `,
+                'inIntervalPayment'
+            )
+            .groupBy('loan.id')
+            .addGroupBy('person.id')
+            .addGroupBy('"user".id');
 
-        if (userId) {
-            queryBuilder.andWhere('loan.userId = :userId', { userId });
-        }
+        if (userId) qb.andWhere('loan.userId = :userId', { userId });
+        if (documentNumber) qb.andWhere('person.documentNumber = :documentNumber', { documentNumber });
 
-        if (documentNumber) {
-            queryBuilder.andWhere('person.documentNumber = :documentNumber', { documentNumber });
-        }
-
-        const { entities, raw } = await queryBuilder.getRawAndEntities();
+        const { entities, raw } = await qb.getRawAndEntities();
 
         return entities.map((entity, index) => {
             const loan = this.toDomain(entity);
-            loan.paidToday = parseInt(raw[index].paidTodayCount) > 0 ? 1 : 0;
-            const installmentsSum = parseFloat(raw[index].installmentsSum || '0');
+
+            const installmentsSum = Number(raw[index].installmentsSum ?? 0);
             loan.remainingAmount = (loan.amount + loan.interest) - installmentsSum;
+
+            loan.paidToday = Number(raw[index].paidToday ?? 0);
+            loan.inIntervalPayment = Number(raw[index].inIntervalPayment ?? 0);
+
             return loan;
         });
     }
@@ -168,5 +181,77 @@ export class PostgresLoanRepository implements LoanRepository {
         }
 
         return loan;
+    }
+
+    async getDashboardStats(userId?: string): Promise<any> {
+        const todaySql = "(NOW() AT TIME ZONE 'America/Lima')::date";
+
+        // -------------------------------
+        // 1) KPIs en una sola query
+        // -------------------------------
+        const kpisQb = this.typeOrmRepository.manager
+            .createQueryBuilder()
+            .select([
+                `COALESCE(SUM(CASE WHEN loan.created_at::date = ${todaySql} THEN loan.amount ELSE 0 END), 0) AS "totalLentToday"`,
+                `COALESCE(SUM(CASE WHEN installment.installment_date::date = ${todaySql} THEN installment.amount ELSE 0 END), 0) AS "collectedToday"`,
+                `COUNT(DISTINCT CASE WHEN loan.status = 'Activo' THEN loan.id_people ELSE NULL END) AS "activeClients"`,
+            ])
+            .from('loans', 'loan')
+            .leftJoin('loan_installments', 'installment', 'installment.loan_id = loan.id');
+
+        if (userId) {
+            // ojo: acá en tu código mezclas userId vs user_id vs loan.userId
+            // ajusta al nombre real en tu tabla
+            kpisQb.where('loan.user_id = :userId', { userId });
+        }
+
+        const kpisRaw = await kpisQb.getRawOne();
+
+        // -------------------------------
+        // 2) Pending loans (no pago hoy)
+        // - calculamos installmentsSum con join + groupBy (no subquery por loan)
+        // -------------------------------
+        const pendingQb = this.typeOrmRepository
+            .createQueryBuilder('loan')
+            .leftJoinAndSelect('loan.person', 'person')
+            .leftJoinAndSelect('loan.user', 'user')
+            .leftJoin('loan.installments', 'allInstallments')
+            .leftJoin(
+                'loan.installments',
+                'todayInstallment',
+                `"todayInstallment".installment_date::date = ${todaySql}`
+            )
+            .where("loan.status = 'Activo'")
+            .andWhere(`${todaySql} BETWEEN loan.start_date::date AND loan.end_date::date`)
+            .andWhere('"todayInstallment".id IS NULL') // no pago hoy
+            .addSelect('COALESCE(SUM(allInstallments.amount), 0)', 'installmentsSum')
+            .groupBy('loan.id')
+            .addGroupBy('person.id')
+            .addGroupBy('"user".id');
+
+        if (userId) {
+            pendingQb.andWhere('loan.user_id = :userId', { userId });
+        }
+
+        const pendingRaw = await pendingQb.getRawAndEntities();
+
+        const pendingLoans = pendingRaw.entities.map((entity, index) => {
+            const loan = this.toDomain(entity);
+
+            const installmentsSum = Number(pendingRaw.raw[index].installmentsSum ?? 0);
+            loan.remainingAmount = (loan.amount + loan.interest) - installmentsSum;
+
+            loan.paidToday = 0;
+            loan.inIntervalPayment = 1;
+
+            return loan;
+        });
+
+        return {
+            totalLentToday: Number(kpisRaw?.totalLentToday ?? 0),
+            collectedToday: Number(kpisRaw?.collectedToday ?? 0),
+            activeClients: Number(kpisRaw?.activeClients ?? 0),
+            pendingLoans,
+        };
     }
 }

@@ -18,6 +18,7 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
             amount: installment.amount,
             userId: installment.userId,
             status: installment.status,
+            installmentDate: installment.installmentDate,
         });
 
         const saved = await this.repository.save(entity);

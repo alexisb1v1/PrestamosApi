@@ -14,7 +14,7 @@ export class LoanInstallmentEntity {
     @JoinColumn({ name: 'loan_id' })
     loan: LoanEntity;
 
-    @CreateDateColumn({ name: 'installment_date', type: 'timestamp' })
+    @Column({ name: 'installment_date', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     installmentDate: Date;
 
     @Column('numeric', { precision: 12, scale: 2 })

@@ -47,6 +47,9 @@ export class LoanResponseDto {
     @ApiProperty({ example: 450.00, description: 'Monto total restante del préstamo (Capital + Interés - Abonos)' })
     remainingAmount: number;
 
+    @ApiProperty({ example: 0, description: 'Indicador si hoy está en el intervalo de pago (1: Si, 0: No)' })
+    inIntervalPayment: number;
+
     constructor(loan: Loan) {
         this.id = loan.id;
         this.startDate = loan.startDate;
@@ -60,6 +63,7 @@ export class LoanResponseDto {
         this.address = loan.address;
         this.paidToday = loan.paidToday ?? 0;
         this.remainingAmount = loan.remainingAmount ?? (loan.amount + loan.interest);
+        this.inIntervalPayment = loan.inIntervalPayment ?? 0;
 
         if (loan.person) {
             this.documentNumber = loan.person.documentNumber;

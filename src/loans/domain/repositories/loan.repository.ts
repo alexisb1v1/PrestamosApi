@@ -7,6 +7,7 @@ export interface LoanRepository {
     findAllWithFilters(userId?: number, documentNumber?: string): Promise<Loan[]>;
     findActiveByPersonId(personId: string): Promise<Loan | null>;
     findWithInstallments(id: string): Promise<Loan | null>;
+    getDashboardStats(userId?: string): Promise<any>;
 }
 
 export const LoanRepository = Symbol('LoanRepository');

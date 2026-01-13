@@ -17,6 +17,7 @@ export class Loan {
     address: string;
     paidToday?: number;
     remainingAmount?: number;
+    inIntervalPayment?: number;
     person?: Person;
     user?: User;
     installments?: LoanInstallment[];

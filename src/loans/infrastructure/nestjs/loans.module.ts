@@ -9,6 +9,8 @@ import { CreateLoanHandler } from '../../application/commands/v1/handlers/create
 import { ListLoansHandler } from '../../application/queries/v1/handlers/list-loans.handler';
 import { RegisterLoanInstallmentHandler } from '../../application/commands/v1/handlers/register-loan-installment.handler';
 import { GetLoanDetailsHandler } from '../../application/queries/v1/handlers/get-loan-details.handler';
+import { GetDashboardHandler } from '../../application/queries/v1/handlers/get-dashboard.handler';
+import { GetDashboardController } from '../../interfaces/http/v1/get-dashboard/get-dashboard.controller';
 import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { LoanInstallmentRepository } from '../../domain/repositories/loan-installment.repository';
 import { PostgresLoanRepository } from '../repositories/postgres-loan.repository';
@@ -28,12 +30,14 @@ import { UsersModule } from '../../../users/infrastructure/nestjs/users.module';
         ListLoansController,
         RegisterLoanInstallmentController,
         GetLoanDetailsController,
+        GetDashboardController,
     ],
     providers: [
         CreateLoanHandler,
         ListLoansHandler,
         RegisterLoanInstallmentHandler,
         GetLoanDetailsHandler,
+        GetDashboardHandler,
         {
             provide: LoanRepository,
             useClass: PostgresLoanRepository,

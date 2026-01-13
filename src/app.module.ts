@@ -25,6 +25,7 @@ import { JwtService } from '@nestjs/jwt';
         database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
+        timezone: '-05:00',
       }),
     }),
     LoansModule,
