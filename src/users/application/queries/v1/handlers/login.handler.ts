@@ -15,6 +15,7 @@ export class LoginResult {
             username: string;
             profile: string;
             status: string;
+            isDayClosed: boolean;
             person: {
                 id: string;
                 documentType: string;
@@ -80,6 +81,7 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
                 username: user.username,
                 profile: user.profile,
                 status: user.status,
+                isDayClosed: user.isDayClosed,
                 person: {
                     id: person.id!,
                     documentType: person.documentType,

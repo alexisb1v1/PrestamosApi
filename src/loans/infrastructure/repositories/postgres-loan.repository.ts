@@ -194,6 +194,8 @@ export class PostgresLoanRepository implements LoanRepository {
             .select([
                 `COALESCE(SUM(CASE WHEN loan.created_at::date = ${todaySql} THEN loan.amount ELSE 0 END), 0) AS "totalLentToday"`,
                 `COALESCE(SUM(CASE WHEN installment.installment_date::date = ${todaySql} THEN installment.amount ELSE 0 END), 0) AS "collectedToday"`,
+                `COALESCE(SUM(CASE WHEN installment.installment_date::date = ${todaySql} AND (installment.payment_type = 'YAPE' OR installment.payment_type = 'yape') THEN installment.amount ELSE 0 END), 0) AS "collectedTodayYape"`,
+                `COALESCE(SUM(CASE WHEN installment.installment_date::date = ${todaySql} AND (installment.payment_type = 'EFECTIVO' OR installment.payment_type = 'efectivo' OR installment.payment_type = 'CASH' OR installment.payment_type = 'cash') THEN installment.amount ELSE 0 END), 0) AS "collectedTodayCash"`,
                 `COUNT(DISTINCT CASE WHEN loan.status = 'Activo' THEN loan.id_people ELSE NULL END) AS "activeClients"`,
             ])
             .from('loans', 'loan')
@@ -247,9 +249,31 @@ export class PostgresLoanRepository implements LoanRepository {
             return loan;
         });
 
+        // -------------------------------
+        // 3) Total Expenses Today
+        // -------------------------------
+        const expensesQb = this.typeOrmRepository.manager
+            .createQueryBuilder()
+            .select('COALESCE(SUM(expense.amount), 0)', 'totalExpenses')
+            .from('expenses', 'expense')
+            .where(`expense.expense_date::date = ${todaySql}`)
+            .andWhere("expense.status = 'REGISTERED'");
+
+        if (userId) {
+            expensesQb.andWhere('expense.user_id = :userId', { userId });
+        }
+
+        const expensesRaw = await expensesQb.getRawOne();
+
+
         return {
             totalLentToday: Number(kpisRaw?.totalLentToday ?? 0),
             collectedToday: Number(kpisRaw?.collectedToday ?? 0),
+            totalExpensesToday: Number(expensesRaw?.totalExpenses ?? 0),
+            detailCollectedToday: {
+                yape: Number(kpisRaw?.collectedTodayYape ?? 0),
+                efectivo: Number(kpisRaw?.collectedTodayCash ?? 0),
+            },
             activeClients: Number(kpisRaw?.activeClients ?? 0),
             pendingLoans,
         };

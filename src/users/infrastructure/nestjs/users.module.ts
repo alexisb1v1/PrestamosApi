@@ -9,6 +9,7 @@ import { LoginHandler } from '../../application/queries/v1/handlers/login.handle
 import { GetUserHandler } from '../../application/queries/v1/handlers/get-user.handler';
 import { ListUsersHandler } from '../../application/queries/v1/handlers/list-users.handler';
 import { FindPersonHandler } from '../../application/queries/v1/handlers/find-person.handler';
+import { ToggleDayStatusHandler } from '../../application/commands/v1/handlers/toggle-day-status.handler';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { PersonRepository } from '../../domain/repositories/person.repository';
 import { PostgresUserRepository } from '../repositories/postgres-user.repository';
@@ -47,6 +48,7 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
         GetUserHandler,
         ListUsersHandler,
         FindPersonHandler,
+        ToggleDayStatusHandler,
         {
             provide: UserRepository,
             useClass: PostgresUserRepository,

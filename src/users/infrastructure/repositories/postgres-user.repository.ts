@@ -52,6 +52,7 @@ export class PostgresUserRepository implements UserRepository {
         entity.profile = user.profile;
         entity.status = user.status;
         entity.idPeople = user.idPeople.toString();
+        entity.isDayClosed = user.isDayClosed;
         return entity;
     }
 
@@ -63,6 +64,7 @@ export class PostgresUserRepository implements UserRepository {
             entity.status,
             Number(entity.idPeople),
             entity.id,
+            entity.isDayClosed,
         );
 
         if (entity.person) {

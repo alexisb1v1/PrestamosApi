@@ -8,6 +8,7 @@ export class User {
     status: string;
     idPeople: number;
     person?: Person;
+    isDayClosed: boolean;
 
     constructor(
         username: string,
@@ -16,6 +17,7 @@ export class User {
         status: string,
         idPeople: number,
         id?: string,
+        isDayClosed: boolean = false,
     ) {
         this.username = username;
         this.passwordHash = passwordHash;
@@ -23,5 +25,6 @@ export class User {
         this.status = status;
         this.idPeople = idPeople;
         this.id = id;
+        this.isDayClosed = isDayClosed;
     }
 }

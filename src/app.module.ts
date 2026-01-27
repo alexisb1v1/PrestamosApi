@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoansModule } from './loans/infrastructure/nestjs/loans.module';
 import { UsersModule } from './users/infrastructure/nestjs/users.module';
+import { ExpensesModule } from './expenses/infrastructure/nestjs/expenses.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './users/infrastructure/security/jwt-auth.guard';
 import { JwtService } from '@nestjs/jwt';
@@ -30,6 +31,7 @@ import { JwtService } from '@nestjs/jwt';
     }),
     LoansModule,
     UsersModule,
+    ExpensesModule,
     HealthModule,
   ],
   controllers: [],

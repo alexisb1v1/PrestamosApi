@@ -24,4 +24,7 @@ export class UserEntity {
     @ManyToOne(() => PersonEntity)
     @JoinColumn({ name: 'id_people' })
     person: PersonEntity;
+
+    @Column({ name: 'is_day_closed', type: 'boolean', default: false })
+    isDayClosed: boolean;
 }

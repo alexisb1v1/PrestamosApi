@@ -1,11 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Put, HttpStatus, HttpException, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Put, Patch, HttpStatus, HttpException, Query } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ListUsersQuery } from '../../../application/queries/v1/list-users.query';
 import { GetUserQuery } from '../../../application/queries/v1/get-user.query';
 import { UpdateUserCommand } from '../../../application/commands/v1/update-user.command';
 import { DeleteUserCommand } from '../../../application/commands/v1/delete-user.command';
+import { ToggleDayStatusCommand } from '../../../application/commands/v1/toggle-day-status.command';
 import { UpdateUserDto } from './dto/update-user.request.dto';
+import { ToggleDayStatusDto } from './dto/toggle-day-status.request.dto';
 import { UserResponseDto } from './dto/user.response.dto';
 import { User } from '../../../domain/entities/user.entity';
 
@@ -80,5 +82,15 @@ export class UserController {
             throw new HttpException(result.message, HttpStatus.BAD_REQUEST);
         }
         return result;
+    }
+
+    @Patch(':id/toggle-day-status')
+    @ApiOperation({ summary: 'Toggle user day status (close/open day)' })
+    @ApiResponse({ status: 200, description: 'User day status toggled successfully.' })
+    @ApiResponse({ status: 404, description: 'User not found.' })
+    async toggleDayStatus(@Param('id') id: string, @Body() dto: ToggleDayStatusDto) {
+        const command = new ToggleDayStatusCommand(id, dto.isDayClosed);
+        await this.commandBus.execute(command);
+        return { success: true, message: 'Estado del día actualizado correctamente' };
     }
 }

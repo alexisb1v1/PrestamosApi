@@ -35,6 +35,9 @@ class UserDataDto {
 
     @ApiProperty({ type: PersonDto })
     person: PersonDto;
+
+    @ApiProperty()
+    isDayClosed: boolean;
 }
 
 export class LoginResponseDto {

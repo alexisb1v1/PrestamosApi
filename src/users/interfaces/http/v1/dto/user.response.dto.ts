@@ -21,6 +21,9 @@ export class UserResponseDto {
     idPeople: number;
 
     @ApiProperty()
+    isDayClosed: boolean;
+
+    @ApiProperty()
     documentType?: string;
 
     @ApiProperty()
@@ -42,6 +45,7 @@ export class UserResponseDto {
         this.profile = user.profile;
         this.status = user.status;
         this.idPeople = user.idPeople;
+        this.isDayClosed = user.isDayClosed;
 
         if (user.person) {
             this.documentType = user.person.documentType;
