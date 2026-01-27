@@ -16,8 +16,8 @@ export class RegisterLoanInstallmentController {
     @ApiResponse({ status: 401, description: 'Unauthorized.' })
     @ApiResponse({ status: 400, description: 'Invalid data.' })
     async register(@Body() dto: RegisterLoanInstallmentDto): Promise<{ id: string }> {
-        const { loanId, amount, userId } = dto;
-        const command = new RegisterLoanInstallmentCommand(loanId, amount, userId);
+        const { loanId, amount, userId, paymentType } = dto;
+        const command = new RegisterLoanInstallmentCommand(loanId, amount, userId, paymentType);
         const id = await this.commandBus.execute(command);
         return { id };
     }

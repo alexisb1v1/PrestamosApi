@@ -29,4 +29,7 @@ export class LoanInstallmentEntity {
     @ManyToOne(() => UserEntity, { createForeignKeyConstraints: false })
     @JoinColumn({ name: 'user_id' })
     user: UserEntity;
+
+    @Column({ name: 'payment_type', type: 'character varying', length: 10, nullable: true })
+    paymentType: string;
 }

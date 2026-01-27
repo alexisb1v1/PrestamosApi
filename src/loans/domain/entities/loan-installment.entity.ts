@@ -7,5 +7,6 @@ export class LoanInstallment {
         public readonly status: string = 'PAID',
         public readonly id?: string,
         public readonly userName?: string,
+        public readonly paymentType?: string,
     ) { }
 }

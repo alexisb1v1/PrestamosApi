@@ -15,7 +15,7 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<RegisterL
     ) { }
 
     async execute(command: RegisterLoanInstallmentCommand): Promise<string> {
-        const { loanId, amount, userId } = command;
+        const { loanId, amount, userId, paymentType } = command;
 
         // 1. Fetch loan to check creation date
         const loan = await this.loanRepository.findById(loanId);
@@ -35,6 +35,10 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<RegisterL
             new Date(),
             amount,
             userId,
+            'PAID',
+            undefined, // id
+            undefined, // userName
+            paymentType,
         );
 
         return await this.repository.save(installment);

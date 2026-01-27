@@ -17,4 +17,9 @@ export class RegisterLoanInstallmentDto {
     @IsNotEmpty()
     @IsString()
     userId: string;
+
+    @ApiProperty({ example: 'CASH', description: 'The type of payment (e.g., CASH, TRANSFER)' })
+    @IsNotEmpty()
+    @IsString()
+    paymentType: string;
 }

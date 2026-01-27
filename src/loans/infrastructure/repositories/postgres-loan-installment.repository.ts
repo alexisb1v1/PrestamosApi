@@ -19,6 +19,7 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
             userId: installment.userId,
             status: installment.status,
             installmentDate: installment.installmentDate,
+            paymentType: installment.paymentType,
         });
 
         const saved = await this.repository.save(entity);
@@ -38,6 +39,8 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
             entity.userId,
             entity.status,
             entity.id,
+            undefined, // userName
+            entity.paymentType,
         ));
     }
 }
