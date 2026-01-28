@@ -40,6 +40,10 @@ export class PostgresLoanRepository implements LoanRepository {
     }
 
     async findAllWithFilters(userId?: number, documentNumber?: string): Promise<Loan[]> {
+        // Optimized: Using DATE_TRUNC for index-friendly date comparisons
+        const todayStartSql = "DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Lima')";
+        const todayEndSql = "DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Lima') + INTERVAL '1 day'";
+
         const qb = this.typeOrmRepository
             .createQueryBuilder('loan')
             .leftJoinAndSelect('loan.person', 'person')
@@ -49,8 +53,8 @@ export class PostgresLoanRepository implements LoanRepository {
             .addSelect(
                 `
       MAX(
-        CASE WHEN installment.installment_date::date =
-          (NOW() AT TIME ZONE 'America/Lima')::date
+        CASE WHEN installment.installment_date >= ${todayStartSql}
+          AND installment.installment_date < ${todayEndSql}
         THEN 1 ELSE 0 END
       )
       `,
@@ -58,8 +62,8 @@ export class PostgresLoanRepository implements LoanRepository {
             )
             .addSelect(
                 `
-      CASE WHEN (NOW() AT TIME ZONE 'America/Lima')::date
-        BETWEEN loan.start_date::date AND loan.end_date::date
+      CASE WHEN ${todayStartSql} >= loan.start_date
+        AND ${todayStartSql} < loan.end_date
       THEN 1 ELSE 0 END
       `,
                 'inIntervalPayment'
@@ -184,7 +188,9 @@ export class PostgresLoanRepository implements LoanRepository {
     }
 
     async getDashboardStats(userId?: string): Promise<any> {
-        const todaySql = "(NOW() AT TIME ZONE 'America/Lima')::date";
+        // Optimized: Using DATE_TRUNC for index-friendly date comparisons
+        const todayStartSql = "DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Lima')";
+        const todayEndSql = "DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Lima') + INTERVAL '1 day'";
 
         // -------------------------------
         // 1) KPIs en una sola query
@@ -192,18 +198,16 @@ export class PostgresLoanRepository implements LoanRepository {
         const kpisQb = this.typeOrmRepository.manager
             .createQueryBuilder()
             .select([
-                `COALESCE(SUM(CASE WHEN loan.created_at::date = ${todaySql} THEN loan.amount ELSE 0 END), 0) AS "totalLentToday"`,
-                `COALESCE(SUM(CASE WHEN installment.installment_date::date = ${todaySql} THEN installment.amount ELSE 0 END), 0) AS "collectedToday"`,
-                `COALESCE(SUM(CASE WHEN installment.installment_date::date = ${todaySql} AND (installment.payment_type = 'YAPE' OR installment.payment_type = 'yape') THEN installment.amount ELSE 0 END), 0) AS "collectedTodayYape"`,
-                `COALESCE(SUM(CASE WHEN installment.installment_date::date = ${todaySql} AND (installment.payment_type = 'EFECTIVO' OR installment.payment_type = 'efectivo' OR installment.payment_type = 'CASH' OR installment.payment_type = 'cash') THEN installment.amount ELSE 0 END), 0) AS "collectedTodayCash"`,
+                `COALESCE(SUM(CASE WHEN loan.created_at >= ${todayStartSql} AND loan.created_at < ${todayEndSql} THEN loan.amount ELSE 0 END), 0) AS "totalLentToday"`,
+                `COALESCE(SUM(CASE WHEN installment.installment_date >= ${todayStartSql} AND installment.installment_date < ${todayEndSql} THEN installment.amount ELSE 0 END), 0) AS "collectedToday"`,
+                `COALESCE(SUM(CASE WHEN installment.installment_date >= ${todayStartSql} AND installment.installment_date < ${todayEndSql} AND UPPER(installment.payment_type) = 'YAPE' THEN installment.amount ELSE 0 END), 0) AS "collectedTodayYape"`,
+                `COALESCE(SUM(CASE WHEN installment.installment_date >= ${todayStartSql} AND installment.installment_date < ${todayEndSql} AND UPPER(installment.payment_type) IN ('EFECTIVO', 'CASH') THEN installment.amount ELSE 0 END), 0) AS "collectedTodayCash"`,
                 `COUNT(DISTINCT CASE WHEN loan.status = 'Activo' THEN loan.id_people ELSE NULL END) AS "activeClients"`,
             ])
             .from('loans', 'loan')
             .leftJoin('loan_installments', 'installment', 'installment.loan_id = loan.id');
 
         if (userId) {
-            // ojo: acá en tu código mezclas userId vs user_id vs loan.userId
-            // ajusta al nombre real en tu tabla
             kpisQb.where('loan.user_id = :userId', { userId });
         }
 
@@ -221,10 +225,10 @@ export class PostgresLoanRepository implements LoanRepository {
             .leftJoin(
                 'loan.installments',
                 'todayInstallment',
-                `"todayInstallment".installment_date::date = ${todaySql}`
+                `"todayInstallment".installment_date >= ${todayStartSql} AND "todayInstallment".installment_date < ${todayEndSql}`
             )
             .where("loan.status = 'Activo'")
-            .andWhere(`${todaySql} BETWEEN loan.start_date::date AND loan.end_date::date`)
+            .andWhere(`${todayStartSql} >= loan.start_date AND ${todayStartSql} < loan.end_date`)
             .andWhere('"todayInstallment".id IS NULL') // no pago hoy
             .addSelect('COALESCE(SUM(allInstallments.amount), 0)', 'installmentsSum')
             .groupBy('loan.id')
@@ -256,7 +260,7 @@ export class PostgresLoanRepository implements LoanRepository {
             .createQueryBuilder()
             .select('COALESCE(SUM(expense.amount), 0)', 'totalExpenses')
             .from('expenses', 'expense')
-            .where(`expense.expense_date::date = ${todaySql}`)
+            .where(`expense.expense_date >= ${todayStartSql} AND expense.expense_date < ${todayEndSql}`)
             .andWhere("expense.status = 'REGISTERED'");
 
         if (userId) {
