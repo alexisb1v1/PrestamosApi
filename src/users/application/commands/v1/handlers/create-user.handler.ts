@@ -25,7 +25,7 @@ export class CreateUserHandler implements ICommandHandler<CreateUserCommand, Cre
 
     async execute(command: CreateUserCommand): Promise<CreateUserResult> {
         try {
-            const { username, passwordHash, profile, documentType, documentNumber, firstName, lastName, birthday } = command;
+            const { username, passwordHash, profile, documentType, documentNumber, firstName, lastName, birthday, idCompany } = command;
 
             let personId: string;
 
@@ -48,7 +48,7 @@ export class CreateUserHandler implements ICommandHandler<CreateUserCommand, Cre
                 personId = await this.personRepository.save(newPerson);
             }
 
-            // 2. Create User with the Person ID
+            // 2. Create User with the Person ID and Company ID
             const status = 'ACTIVE';
             const newUser = new User(
                 username,
@@ -56,6 +56,9 @@ export class CreateUserHandler implements ICommandHandler<CreateUserCommand, Cre
                 profile,
                 status,
                 Number(personId),
+                undefined, // id
+                false, // isDayClosed
+                idCompany, // idCompany
             );
 
             const userId = await this.userRepository.save(newUser);

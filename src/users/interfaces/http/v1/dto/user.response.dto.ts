@@ -38,6 +38,9 @@ export class UserResponseDto {
     @ApiProperty()
     birthday?: Date;
 
+    @ApiProperty()
+    idCompany?: string;
+
     constructor(user: User) {
         this.id = user.id;
         this.username = user.username;
@@ -54,5 +57,7 @@ export class UserResponseDto {
             this.lastName = user.person.lastName;
             this.birthday = user.person.birthday;
         }
+
+        this.idCompany = user.idCompany;
     }
 }

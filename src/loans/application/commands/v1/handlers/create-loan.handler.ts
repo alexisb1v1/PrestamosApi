@@ -42,8 +42,16 @@ export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
         }
 
         // 3. End Date (work days, skip Sundays)
+        // IMPORTANTE: start_date cuenta como día 1 de pago
         const endDate = new Date(startDate);
         let workDaysAdded = 0;
+
+        // Contar el start_date como día 1 si no es domingo
+        if (startDate.getDay() !== 0) {
+            workDaysAdded = 1;
+        }
+
+        // Sumar los días restantes (23 más para completar 24)
         while (workDaysAdded < days) {
             endDate.setDate(endDate.getDate() + 1);
             if (endDate.getDay() !== 0) { // Not Sunday

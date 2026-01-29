@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoansModule } from './loans/infrastructure/nestjs/loans.module';
 import { UsersModule } from './users/infrastructure/nestjs/users.module';
 import { ExpensesModule } from './expenses/infrastructure/nestjs/expenses.module';
+import { CompaniesModule } from './companies/companies.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './users/infrastructure/security/jwt-auth.guard';
 import { JwtService } from '@nestjs/jwt';
@@ -25,13 +26,14 @@ import { JwtService } from '@nestjs/jwt';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: false, // ⚠️ NUNCA uses true en producción - puede causar pérdida de datos
         timezone: '-05:00',
       }),
     }),
     LoansModule,
     UsersModule,
     ExpensesModule,
+    CompaniesModule,
     HealthModule,
   ],
   controllers: [],

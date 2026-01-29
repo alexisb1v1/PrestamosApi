@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUserDto {
@@ -49,4 +49,9 @@ export class CreateUserDto {
     @IsDateString()
     @IsNotEmpty()
     birthday: string;
+
+    @ApiProperty({ example: '1', description: 'Company ID', required: false })
+    @IsString()
+    @IsOptional()
+    idCompany?: string;
 }

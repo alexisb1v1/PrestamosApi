@@ -38,6 +38,9 @@ class UserDataDto {
 
     @ApiProperty()
     isDayClosed: boolean;
+
+    @ApiProperty({ required: false })
+    idCompany?: string;
 }
 
 export class LoginResponseDto {

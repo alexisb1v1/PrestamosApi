@@ -15,7 +15,7 @@ export class CreateUserController {
     @ApiResponse({ status: 201, description: 'User and Person created successfully.', type: CreateUserResponseDto })
     @ApiResponse({ status: 400, description: 'Bad request - validation failed or creation error.' })
     async create(@Body() dto: CreateUserDto): Promise<CreateUserResponseDto> {
-        const { username, passwordHash, profile, documentType, documentNumber, firstName, lastName, birthday } = dto;
+        const { username, passwordHash, profile, documentType, documentNumber, firstName, lastName, birthday, idCompany } = dto;
 
         const birthdayDate = new Date(birthday);
 
@@ -27,7 +27,8 @@ export class CreateUserController {
             documentNumber,
             firstName,
             lastName,
-            birthdayDate
+            birthdayDate,
+            idCompany,
         );
 
         const result = await this.commandBus.execute(command);

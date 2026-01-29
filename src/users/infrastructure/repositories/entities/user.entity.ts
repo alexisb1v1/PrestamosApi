@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { PersonEntity } from './person.entity';
+import { CompanyEntity } from '../../../../companies/infrastructure/repositories/entities/company.entity';
 
 @Entity('user')
 export class UserEntity {
@@ -27,4 +28,11 @@ export class UserEntity {
 
     @Column({ name: 'is_day_closed', type: 'boolean', default: false })
     isDayClosed: boolean;
+
+    @Column({ name: 'id_company', type: 'bigint', nullable: true })
+    idCompany: string;
+
+    @ManyToOne(() => CompanyEntity)
+    @JoinColumn({ name: 'id_company' })
+    company: CompanyEntity;
 }

@@ -9,5 +9,6 @@ export class CreateUserCommand {
         public readonly firstName: string,
         public readonly lastName: string,
         public readonly birthday: Date,
+        public readonly idCompany?: string,
     ) { }
 }
