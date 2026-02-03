@@ -12,6 +12,6 @@ export class ListLoansHandler implements IQueryHandler<ListLoansQuery> {
     ) { }
 
     async execute(query: ListLoansQuery): Promise<Loan[]> {
-        return this.loanRepository.findAllWithFilters(query.userId, query.documentNumber);
+        return this.loanRepository.findAllWithFilters(query.userId, query.documentNumber, query.companyId);
     }
 }

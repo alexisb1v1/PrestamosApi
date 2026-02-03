@@ -13,9 +13,10 @@ export class GetDashboardController {
     @Get()
     @ApiOperation({ summary: 'Obtener el resumen del dashboard diario' })
     @ApiQuery({ name: 'userId', required: false, description: 'Filtrar por ID de usuario' })
+    @ApiQuery({ name: 'companyId', required: false, description: 'Filtrar por ID de empresa' })
     @ApiResponse({ status: 200, type: DashboardResponseDto })
-    async getDashboard(@Request() req, @Query('userId') userId?: string): Promise<DashboardResponseDto> {
-        const result = await this.queryBus.execute(new GetDashboardQuery(userId));
+    async getDashboard(@Request() req, @Query('userId') userId?: string, @Query('companyId') companyId?: string): Promise<DashboardResponseDto> {
+        const result = await this.queryBus.execute(new GetDashboardQuery(userId, companyId));
         return new DashboardResponseDto(result);
     }
 }

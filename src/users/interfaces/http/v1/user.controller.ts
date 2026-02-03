@@ -23,9 +23,10 @@ export class UserController {
     @Get()
     @ApiOperation({ summary: 'List all users' })
     @ApiQuery({ name: 'username', required: false, description: 'Filter by username (partial match)' })
+    @ApiQuery({ name: 'idCompany', required: false, description: 'Filter by company ID' })
     @ApiResponse({ status: 200, description: 'List of users.', type: [UserResponseDto] })
-    async findAll(@Query('username') username?: string): Promise<UserResponseDto[]> {
-        const query = new ListUsersQuery(username);
+    async findAll(@Query('username') username?: string, @Query('idCompany') idCompany?: number): Promise<UserResponseDto[]> {
+        const query = new ListUsersQuery(username, idCompany);
         const users = await this.queryBus.execute(query);
         return users.map((user: User) => new UserResponseDto(user));
     }

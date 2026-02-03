@@ -13,4 +13,7 @@ export class CompanyEntity {
 
     @Column({ name: 'create_at', type: 'date', default: () => 'CURRENT_DATE' })
     createdAt: Date;
+
+    @Column({ name: 'label', type: 'character varying', nullable: true })
+    label?: string;
 }

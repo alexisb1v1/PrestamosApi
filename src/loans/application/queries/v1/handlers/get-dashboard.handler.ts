@@ -11,6 +11,6 @@ export class GetDashboardHandler implements IQueryHandler<GetDashboardQuery> {
     ) { }
 
     async execute(query: GetDashboardQuery): Promise<any> {
-        return await this.loanRepository.getDashboardStats(query.userId);
+        return await this.loanRepository.getDashboardStats(query.userId, query.companyId);
     }
 }

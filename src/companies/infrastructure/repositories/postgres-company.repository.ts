@@ -44,6 +44,9 @@ export class PostgresCompanyRepository implements CompanyRepository {
         entity.companyName = company.companyName;
         entity.status = company.status;
         entity.createdAt = company.createdAt;
+        if (company.label) {
+            entity.label = company.label;
+        }
         return entity;
     }
 
@@ -53,6 +56,7 @@ export class PostgresCompanyRepository implements CompanyRepository {
             entity.status,
             new Date(entity.createdAt),
             entity.id,
+            entity.label,
         );
     }
 }

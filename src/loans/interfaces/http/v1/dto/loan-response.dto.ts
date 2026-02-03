@@ -50,6 +50,10 @@ export class LoanResponseDto {
     @ApiProperty({ example: 0, description: 'Indicador si hoy está en el intervalo de pago (1: Si, 0: No)' })
     inIntervalPayment: number;
 
+
+    @ApiProperty({ required: false })
+    companyId?: string;
+
     constructor(loan: Loan) {
         this.id = loan.id;
         this.startDate = loan.startDate;
@@ -72,6 +76,7 @@ export class LoanResponseDto {
 
         if (loan.user) {
             this.collectorName = loan.user.username;
+            this.companyId = loan.user.idCompany;
         }
     }
 }

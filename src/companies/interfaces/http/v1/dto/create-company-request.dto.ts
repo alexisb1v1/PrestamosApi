@@ -6,4 +6,9 @@ export class CreateCompanyRequestDto {
     @IsNotEmpty()
     @IsString()
     companyName: string;
+
+    @ApiProperty({ example: 'ME', required: false })
+    @IsString()
+    @IsNotEmpty()
+    label?: string;
 }

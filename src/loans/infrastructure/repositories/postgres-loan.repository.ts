@@ -39,7 +39,7 @@ export class PostgresLoanRepository implements LoanRepository {
         return loan;
     }
 
-    async findAllWithFilters(userId?: number, documentNumber?: string): Promise<Loan[]> {
+    async findAllWithFilters(userId?: number, documentNumber?: string, companyId?: number): Promise<Loan[]> {
         // Optimized: Using DATE_TRUNC for index-friendly date comparisons
         const todayStartSql = "DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Lima')";
         const todayEndSql = "DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Lima') + INTERVAL '1 day'";
@@ -74,6 +74,7 @@ export class PostgresLoanRepository implements LoanRepository {
 
         if (userId) qb.andWhere('loan.userId = :userId', { userId });
         if (documentNumber) qb.andWhere('person.documentNumber = :documentNumber', { documentNumber });
+        if (companyId) qb.andWhere('"user".id_company = :companyId', { companyId });
 
         const { entities, raw } = await qb.getRawAndEntities();
 
@@ -180,14 +181,16 @@ export class PostgresLoanRepository implements LoanRepository {
                 entity.user.profile,
                 entity.user.status,
                 Number(entity.user.idPeople),
-                entity.user.id
+                entity.user.id,
+                entity.user.isDayClosed,
+                entity.user.idCompany
             );
         }
 
         return loan;
     }
 
-    async getDashboardStats(userId?: string): Promise<any> {
+    async getDashboardStats(userId?: string, companyId?: string): Promise<any> {
         // Optimized: Using DATE_TRUNC for index-friendly date comparisons
         const todayStartSql = "DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Lima')";
         const todayEndSql = "DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Lima') + INTERVAL '1 day'";
@@ -205,10 +208,14 @@ export class PostgresLoanRepository implements LoanRepository {
                 `COUNT(DISTINCT CASE WHEN loan.status = 'Activo' THEN loan.id_people ELSE NULL END) AS "activeClients"`,
             ])
             .from('loans', 'loan')
-            .leftJoin('loan_installments', 'installment', 'installment.loan_id = loan.id');
+            .leftJoin('loan_installments', 'installment', 'installment.loan_id = loan.id')
+            .leftJoin('user', 'u', 'loan.user_id = u.id');
 
         if (userId) {
             kpisQb.where('loan.user_id = :userId', { userId });
+        }
+        if (companyId) {
+            kpisQb.andWhere('u.id_company = :companyId', { companyId });
         }
 
         const kpisRaw = await kpisQb.getRawOne();
@@ -236,7 +243,10 @@ export class PostgresLoanRepository implements LoanRepository {
             .addGroupBy('"user".id');
 
         if (userId) {
-            pendingQb.andWhere('loan.user_id = :userId', { userId });
+            pendingQb.andWhere('loan.userId = :userId', { userId });
+        }
+        if (companyId) {
+            pendingQb.andWhere('"user".id_company = :companyId', { companyId });
         }
 
         const pendingRaw = await pendingQb.getRawAndEntities();
@@ -260,11 +270,15 @@ export class PostgresLoanRepository implements LoanRepository {
             .createQueryBuilder()
             .select('COALESCE(SUM(expense.amount), 0)', 'totalExpenses')
             .from('expenses', 'expense')
+            .leftJoin('user', 'u', 'expense.user_id = u.id')
             .where(`expense.expense_date >= ${todayStartSql} AND expense.expense_date < ${todayEndSql}`)
             .andWhere("expense.status = 'REGISTERED'");
 
         if (userId) {
             expensesQb.andWhere('expense.user_id = :userId', { userId });
+        }
+        if (companyId) {
+            expensesQb.andWhere('u.id_company = :companyId', { companyId });
         }
 
         const expensesRaw = await expensesQb.getRawOne();

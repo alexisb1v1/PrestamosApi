@@ -31,12 +31,16 @@ export class PostgresUserRepository implements UserRepository {
         return this.toDomain(entity);
     }
 
-    async findAll(username?: string): Promise<User[]> {
+    async findAll(username?: string, idCompany?: number): Promise<User[]> {
         const options: any = {
             relations: ['person'],
+            where: {},
         };
         if (username) {
-            options.where = { username: Like(`%${username}%`) };
+            options.where.username = Like(`%${username}%`);
+        }
+        if (idCompany) {
+            options.where.idCompany = idCompany;
         }
         const entities = await this.typeOrmRepository.find(options);
         return entities.map(entity => this.toDomain(entity));

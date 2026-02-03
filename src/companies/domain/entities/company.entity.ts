@@ -4,15 +4,19 @@ export class Company {
     status: string;
     createdAt: Date;
 
+    label?: string;
+
     constructor(
         companyName: string,
         status: string,
         createdAt: Date,
         id?: string,
+        label?: string,
     ) {
         this.id = id;
         this.companyName = companyName;
         this.status = status;
         this.createdAt = createdAt;
+        this.label = label;
     }
 }

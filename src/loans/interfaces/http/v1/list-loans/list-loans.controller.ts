@@ -15,12 +15,14 @@ export class ListLoansController {
     @ApiOperation({ summary: 'List all loans with optional filters' })
     @ApiQuery({ name: 'userId', required: false, type: Number, description: 'Filter by collector user ID' })
     @ApiQuery({ name: 'documentNumber', required: false, type: String, description: 'Filter by client document number' })
+    @ApiQuery({ name: 'companyId', required: false, type: Number, description: 'Filter by company ID' })
     @ApiResponse({ status: 200, description: 'List of loans retrieved successfully.', type: [LoanResponseDto] })
     async findAll(
         @Query('userId') userId?: number,
         @Query('documentNumber') documentNumber?: string,
+        @Query('companyId') companyId?: number,
     ): Promise<LoanResponseDto[]> {
-        const query = new ListLoansQuery(userId, documentNumber);
+        const query = new ListLoansQuery(userId, documentNumber, companyId);
         const loans: Loan[] = await this.queryBus.execute(query);
         return loans.map(loan => new LoanResponseDto(loan));
     }

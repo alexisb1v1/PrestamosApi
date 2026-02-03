@@ -12,6 +12,6 @@ export class ListUsersHandler implements IQueryHandler<ListUsersQuery, User[]> {
     ) { }
 
     async execute(query: ListUsersQuery): Promise<User[]> {
-        return this.userRepository.findAll(query.username);
+        return this.userRepository.findAll(query.username, query.idCompany);
     }
 }
