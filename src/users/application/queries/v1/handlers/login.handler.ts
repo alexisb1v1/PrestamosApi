@@ -4,6 +4,7 @@ import { Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserRepository } from '../../../../domain/repositories/user.repository';
 import { PersonRepository } from '../../../../domain/repositories/person.repository';
+import { CompanyRepository, CompanyRepositoryToken } from '../../../../../companies/domain/repositories/company.repository';
 
 export class LoginResult {
     constructor(
@@ -17,6 +18,7 @@ export class LoginResult {
             status: string;
             isDayClosed: boolean;
             idCompany?: string;
+            companyStatus?: string;
             person: {
                 id: string;
                 documentType: string;
@@ -36,6 +38,8 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
         private readonly userRepository: UserRepository,
         @Inject(PersonRepository)
         private readonly personRepository: PersonRepository,
+        @Inject(CompanyRepositoryToken)
+        private readonly companyRepository: CompanyRepository,
         private readonly jwtService: JwtService,
     ) { }
 
@@ -76,7 +80,16 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
 
             const token = this.jwtService.sign(payload);
 
-            // 5. Return user with person data and token
+            // 5. Get Company Status if idCompany exists
+            let companyStatus: string | undefined;
+            if (user.idCompany) {
+                const company = await this.companyRepository.findById(user.idCompany);
+                if (company) {
+                    companyStatus = company.status;
+                }
+            }
+
+            // 6. Return user with person data and token
             return new LoginResult(true, 'Login exitoso', token, {
                 id: user.id!,
                 username: user.username,
@@ -84,6 +97,7 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
                 status: user.status,
                 isDayClosed: user.isDayClosed,
                 idCompany: user.idCompany,
+                companyStatus: companyStatus,
                 person: {
                     id: person.id!,
                     documentType: person.documentType,

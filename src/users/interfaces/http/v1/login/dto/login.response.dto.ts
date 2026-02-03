@@ -41,6 +41,9 @@ class UserDataDto {
 
     @ApiProperty({ required: false })
     idCompany?: string;
+
+    @ApiProperty({ required: false })
+    companyStatus?: string;
 }
 
 export class LoginResponseDto {
