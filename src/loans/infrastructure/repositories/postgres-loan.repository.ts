@@ -283,11 +283,56 @@ export class PostgresLoanRepository implements LoanRepository {
 
         const expensesRaw = await expensesQb.getRawOne();
 
+        // -------------------------------
+        // 4) Thermometer (Global / Historical)
+        // Formula: ((TotalCobradoHistorico - (TotalCobradoHistorico * 0.20)) / TotalPrestadoHistorico) * 100
+        // -------------------------------
+        const globalStatsQb = this.typeOrmRepository.manager
+            .createQueryBuilder()
+            .select([
+                `COALESCE(SUM(installment.amount), 0) AS "historicalCollected"`,
+            ])
+            .from('loan_installments', 'installment')
+            .leftJoin('loans', 'loan', 'installment.loan_id = loan.id') // Join to filter by company if needed, or correctness
+            .leftJoin('user', 'u', 'loan.user_id = u.id');
+
+        const globalLentQb = this.typeOrmRepository.manager
+            .createQueryBuilder()
+            .select([
+                `COALESCE(SUM(loan.amount), 0) AS "historicalLent"`,
+            ])
+            .from('loans', 'loan')
+            //.leftJoin('user', 'u', 'loan.user_id = u.id'); // Joined below conditionally if needed
+            .leftJoin('user', 'u', 'loan.user_id = u.id');
+
+
+        if (userId) {
+            globalStatsQb.where('loan.user_id = :userId', { userId });
+            globalLentQb.where('loan.user_id = :userId', { userId });
+        }
+        if (companyId) {
+            globalStatsQb.andWhere('u.id_company = :companyId', { companyId });
+            globalLentQb.andWhere('u.id_company = :companyId', { companyId });
+        }
+
+        const globalStatsRaw = await globalStatsQb.getRawOne();
+        const globalLentRaw = await globalLentQb.getRawOne();
+
+        const historicalCollected = Number(globalStatsRaw?.historicalCollected ?? 0);
+        const historicalLent = Number(globalLentRaw?.historicalLent ?? 0);
+
+        let thermometer = 0;
+        if (historicalLent > 0) {
+            const capitalRecovered = historicalCollected - (historicalCollected * 0.20);
+            thermometer = (capitalRecovered / historicalLent) * 100;
+        }
+
 
         return {
             totalLentToday: Number(kpisRaw?.totalLentToday ?? 0),
             collectedToday: Number(kpisRaw?.collectedToday ?? 0),
             totalExpensesToday: Number(expensesRaw?.totalExpenses ?? 0),
+            thermometer: Number(thermometer.toFixed(2)),
             detailCollectedToday: {
                 yape: Number(kpisRaw?.collectedTodayYape ?? 0),
                 efectivo: Number(kpisRaw?.collectedTodayCash ?? 0),

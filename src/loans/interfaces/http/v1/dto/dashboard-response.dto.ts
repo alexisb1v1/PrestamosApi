@@ -23,11 +23,15 @@ export class DashboardResponseDto {
     @ApiProperty({ example: 100.00, description: 'Total gastado el día de hoy' })
     totalExpensesToday: number;
 
+    @ApiProperty({ example: 85.50, description: 'Indicador de recuperación de capital (Termómetro)' })
+    thermometer: number;
+
     constructor(data: any) {
         this.totalLentToday = data.totalLentToday;
         this.collectedToday = data.collectedToday;
         this.totalExpensesToday = data.totalExpensesToday || 0;
         this.activeClients = data.activeClients;
+        this.thermometer = data.thermometer || 0;
         this.pendingLoans = data.pendingLoans.map(loan => new LoanResponseDto(loan));
         this.detailCollectedToday = data.detailCollectedToday || { yape: 0, efectivo: 0 };
     }
