@@ -43,4 +43,7 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
             entity.paymentType,
         ));
     }
+    async delete(id: string): Promise<void> {
+        await this.repository.delete(id);
+    }
 }

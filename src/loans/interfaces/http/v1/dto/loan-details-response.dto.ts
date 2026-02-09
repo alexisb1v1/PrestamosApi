@@ -3,6 +3,9 @@ import { Loan } from '../../../../domain/entities/loan.entity';
 
 export class LoanInstallmentDetailDto {
     @ApiProperty()
+    id: string;
+
+    @ApiProperty()
     date: Date;
 
     @ApiProperty()
@@ -29,6 +32,7 @@ export class LoanDetailsResponseDto {
         this.startDate = loan.startDate;
         this.endDate = loan.endDate;
         this.installments = (loan.installments || []).map(inst => ({
+            id: inst.id || '',
             date: inst.installmentDate,
             amount: inst.amount,
             status: inst.status,

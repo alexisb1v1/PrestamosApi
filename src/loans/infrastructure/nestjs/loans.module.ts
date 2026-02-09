@@ -11,6 +11,7 @@ import { RegisterLoanInstallmentHandler } from '../../application/commands/v1/ha
 import { GetLoanDetailsHandler } from '../../application/queries/v1/handlers/get-loan-details.handler';
 import { GetDashboardHandler } from '../../application/queries/v1/handlers/get-dashboard.handler';
 import { GetDashboardController } from '../../interfaces/http/v1/get-dashboard/get-dashboard.controller';
+import { DeleteLoanInstallmentController } from '../../interfaces/http/v1/delete-loan-installment/delete-loan-installment.controller';
 import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { LoanInstallmentRepository } from '../../domain/repositories/loan-installment.repository';
 import { PostgresLoanRepository } from '../repositories/postgres-loan.repository';
@@ -18,6 +19,7 @@ import { PostgresLoanInstallmentRepository } from '../repositories/postgres-loan
 import { LoanEntity } from '../repositories/entities/loan.entity';
 import { LoanInstallmentEntity } from '../repositories/entities/loan-installment.entity';
 import { UsersModule } from '../../../users/infrastructure/nestjs/users.module';
+import { DeleteLoanInstallmentHandler } from '../../application/commands/v1/handlers/delete-loan-installment.handler';
 
 @Module({
     imports: [
@@ -31,6 +33,7 @@ import { UsersModule } from '../../../users/infrastructure/nestjs/users.module';
         RegisterLoanInstallmentController,
         GetLoanDetailsController,
         GetDashboardController,
+        DeleteLoanInstallmentController,
     ],
     providers: [
         CreateLoanHandler,
@@ -38,6 +41,7 @@ import { UsersModule } from '../../../users/infrastructure/nestjs/users.module';
         RegisterLoanInstallmentHandler,
         GetLoanDetailsHandler,
         GetDashboardHandler,
+        DeleteLoanInstallmentHandler,
         {
             provide: LoanRepository,
             useClass: PostgresLoanRepository,
