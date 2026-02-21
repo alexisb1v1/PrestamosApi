@@ -52,6 +52,12 @@ export class LoanResponseDto {
 
 
     @ApiProperty({ required: false })
+    personId?: string;
+
+    @ApiProperty({ required: false })
+    collectorId?: string;
+
+    @ApiProperty({ required: false })
     companyId?: string;
 
     constructor(loan: Loan) {
@@ -68,6 +74,8 @@ export class LoanResponseDto {
         this.paidToday = loan.paidToday ?? 0;
         this.remainingAmount = loan.remainingAmount ?? (loan.amount + loan.interest);
         this.inIntervalPayment = loan.inIntervalPayment ?? 0;
+        this.personId = loan.idPeople.toString();
+        this.collectorId = loan.userId.toString();
 
         if (loan.person) {
             this.documentNumber = loan.person.documentNumber;
