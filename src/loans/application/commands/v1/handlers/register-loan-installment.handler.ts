@@ -41,6 +41,20 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<RegisterL
             paymentType,
         );
 
-        return await this.repository.save(installment);
+        const installmentId = await this.repository.save(installment);
+
+        // Check if the loan is fully paid to update its status
+        const refreshedLoan = await this.loanRepository.findWithInstallments(loanId);
+        if (refreshedLoan && refreshedLoan.installments) {
+            const totalPaid = refreshedLoan.installments.reduce((sum, inst) => sum + inst.amount, 0);
+            const totalToPay = refreshedLoan.amount + refreshedLoan.interest;
+
+            if (totalPaid >= totalToPay) {
+                refreshedLoan.status = 'Liquidado';
+                await this.loanRepository.save(refreshedLoan);
+            }
+        }
+
+        return installmentId;
     }
 }

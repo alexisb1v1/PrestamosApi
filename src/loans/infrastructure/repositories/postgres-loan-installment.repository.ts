@@ -43,6 +43,22 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
             entity.paymentType,
         ));
     }
+    async findById(id: string): Promise<LoanInstallment | null> {
+        const entity = await this.repository.findOneBy({ id: id as any });
+        if (!entity) return null;
+
+        return new LoanInstallment(
+            entity.loanId,
+            entity.installmentDate,
+            Number(entity.amount),
+            entity.userId,
+            entity.status,
+            entity.id,
+            undefined, // userName
+            entity.paymentType,
+        );
+    }
+
     async delete(id: string): Promise<void> {
         await this.repository.delete(id);
     }
