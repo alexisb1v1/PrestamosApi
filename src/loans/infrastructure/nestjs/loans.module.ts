@@ -12,6 +12,8 @@ import { GetLoanDetailsHandler } from '../../application/queries/v1/handlers/get
 import { GetDashboardHandler } from '../../application/queries/v1/handlers/get-dashboard.handler';
 import { GetDashboardController } from '../../interfaces/http/v1/get-dashboard/get-dashboard.controller';
 import { DeleteLoanInstallmentController } from '../../interfaces/http/v1/delete-loan-installment/delete-loan-installment.controller';
+import { ReassignLoanController } from '../../interfaces/http/v1/reassign-loan/reassign-loan.controller';
+import { DeleteLoanController } from '../../interfaces/http/v1/delete-loan/delete-loan.controller';
 import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { LoanInstallmentRepository } from '../../domain/repositories/loan-installment.repository';
 import { PostgresLoanRepository } from '../repositories/postgres-loan.repository';
@@ -20,6 +22,9 @@ import { LoanEntity } from '../repositories/entities/loan.entity';
 import { LoanInstallmentEntity } from '../repositories/entities/loan-installment.entity';
 import { UsersModule } from '../../../users/infrastructure/nestjs/users.module';
 import { DeleteLoanInstallmentHandler } from '../../application/commands/v1/handlers/delete-loan-installment.handler';
+import { ReassignLoanHandler } from '../../application/commands/v1/handlers/reassign-loan.handler';
+import { DeleteLoanHandler } from '../../application/commands/v1/handlers/delete-loan.handler';
+import { RolesGuard } from '../../../users/infrastructure/security/roles.guard';
 
 @Module({
     imports: [
@@ -34,6 +39,8 @@ import { DeleteLoanInstallmentHandler } from '../../application/commands/v1/hand
         GetLoanDetailsController,
         GetDashboardController,
         DeleteLoanInstallmentController,
+        ReassignLoanController,
+        DeleteLoanController,
     ],
     providers: [
         CreateLoanHandler,
@@ -42,6 +49,9 @@ import { DeleteLoanInstallmentHandler } from '../../application/commands/v1/hand
         GetLoanDetailsHandler,
         GetDashboardHandler,
         DeleteLoanInstallmentHandler,
+        ReassignLoanHandler,
+        DeleteLoanHandler,
+        RolesGuard,
         {
             provide: LoanRepository,
             useClass: PostgresLoanRepository,
