@@ -1,5 +1,3 @@
 export class DeleteExpenseCommand {
-    constructor(
-        public readonly expenseId: string,
-    ) { }
+  constructor(public readonly expenseId: string) {}
 }

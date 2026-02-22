@@ -6,22 +6,22 @@ import { Expense } from '../../../../domain/entities/expense.entity';
 
 @CommandHandler(RegisterExpenseCommand)
 export class RegisterExpenseHandler implements ICommandHandler<RegisterExpenseCommand> {
-    constructor(
-        @Inject(ExpenseRepository)
-        private readonly repository: ExpenseRepository,
-    ) { }
+  constructor(
+    @Inject(ExpenseRepository)
+    private readonly repository: ExpenseRepository,
+  ) {}
 
-    async execute(command: RegisterExpenseCommand): Promise<string> {
-        const { description, amount, userId } = command;
+  async execute(command: RegisterExpenseCommand): Promise<string> {
+    const { description, amount, userId } = command;
 
-        const expense = new Expense(
-            description,
-            amount,
-            userId,
-            new Date(),
-            'REGISTERED', // Default status
-        );
+    const expense = new Expense(
+      description,
+      amount,
+      userId,
+      new Date(),
+      'REGISTERED', // Default status
+    );
 
-        return await this.repository.save(expense);
-    }
+    return await this.repository.save(expense);
+  }
 }

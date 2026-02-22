@@ -6,12 +6,15 @@ import { FindPersonQuery } from '../find-person.query'; // Assuming TS will reso
 
 @QueryHandler(FindPersonQuery)
 export class FindPersonHandler implements IQueryHandler<FindPersonQuery> {
-    constructor(
-        @Inject(PersonRepository)
-        private readonly personRepository: PersonRepository,
-    ) { }
+  constructor(
+    @Inject(PersonRepository)
+    private readonly personRepository: PersonRepository,
+  ) {}
 
-    async execute(query: FindPersonQuery): Promise<Person | null> {
-        return this.personRepository.findByDocument(query.documentType, query.documentNumber);
-    }
+  async execute(query: FindPersonQuery): Promise<Person | null> {
+    return this.personRepository.findByDocument(
+      query.documentType,
+      query.documentNumber,
+    );
+  }
 }

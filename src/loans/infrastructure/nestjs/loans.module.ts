@@ -27,40 +27,40 @@ import { DeleteLoanHandler } from '../../application/commands/v1/handlers/delete
 import { RolesGuard } from '../../../users/infrastructure/security/roles.guard';
 
 @Module({
-    imports: [
-        CqrsModule,
-        TypeOrmModule.forFeature([LoanEntity, LoanInstallmentEntity]),
-        UsersModule,
-    ],
-    controllers: [
-        CreateLoanController,
-        ListLoansController,
-        RegisterLoanInstallmentController,
-        GetLoanDetailsController,
-        GetDashboardController,
-        DeleteLoanInstallmentController,
-        ReassignLoanController,
-        DeleteLoanController,
-    ],
-    providers: [
-        CreateLoanHandler,
-        ListLoansHandler,
-        RegisterLoanInstallmentHandler,
-        GetLoanDetailsHandler,
-        GetDashboardHandler,
-        DeleteLoanInstallmentHandler,
-        ReassignLoanHandler,
-        DeleteLoanHandler,
-        RolesGuard,
-        {
-            provide: LoanRepository,
-            useClass: PostgresLoanRepository,
-        },
-        {
-            provide: LoanInstallmentRepository,
-            useClass: PostgresLoanInstallmentRepository,
-        },
-    ],
-    exports: [LoanRepository, LoanInstallmentRepository],
+  imports: [
+    CqrsModule,
+    TypeOrmModule.forFeature([LoanEntity, LoanInstallmentEntity]),
+    UsersModule,
+  ],
+  controllers: [
+    CreateLoanController,
+    ListLoansController,
+    RegisterLoanInstallmentController,
+    GetLoanDetailsController,
+    GetDashboardController,
+    DeleteLoanInstallmentController,
+    ReassignLoanController,
+    DeleteLoanController,
+  ],
+  providers: [
+    CreateLoanHandler,
+    ListLoansHandler,
+    RegisterLoanInstallmentHandler,
+    GetLoanDetailsHandler,
+    GetDashboardHandler,
+    DeleteLoanInstallmentHandler,
+    ReassignLoanHandler,
+    DeleteLoanHandler,
+    RolesGuard,
+    {
+      provide: LoanRepository,
+      useClass: PostgresLoanRepository,
+    },
+    {
+      provide: LoanInstallmentRepository,
+      useClass: PostgresLoanInstallmentRepository,
+    },
+  ],
+  exports: [LoanRepository, LoanInstallmentRepository],
 })
-export class LoansModule { }
+export class LoansModule {}

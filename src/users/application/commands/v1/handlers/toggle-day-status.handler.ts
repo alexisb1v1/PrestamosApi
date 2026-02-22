@@ -5,20 +5,20 @@ import { UserRepository } from '../../../../domain/repositories/user.repository'
 
 @CommandHandler(ToggleDayStatusCommand)
 export class ToggleDayStatusHandler implements ICommandHandler<ToggleDayStatusCommand> {
-    constructor(
-        @Inject(UserRepository)
-        private readonly repository: UserRepository,
-    ) { }
+  constructor(
+    @Inject(UserRepository)
+    private readonly repository: UserRepository,
+  ) {}
 
-    async execute(command: ToggleDayStatusCommand): Promise<void> {
-        const { userId, isDayClosed } = command;
-        const user = await this.repository.findById(userId);
+  async execute(command: ToggleDayStatusCommand): Promise<void> {
+    const { userId, isDayClosed } = command;
+    const user = await this.repository.findById(userId);
 
-        if (!user) {
-            throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
-        }
-
-        user.isDayClosed = isDayClosed;
-        await this.repository.save(user);
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
     }
+
+    user.isDayClosed = isDayClosed;
+    await this.repository.save(user);
+  }
 }

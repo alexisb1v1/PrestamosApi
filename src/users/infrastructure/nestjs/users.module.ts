@@ -27,43 +27,48 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '../security/jwt-auth.guard';
 
 @Module({
-    imports: [
-        CqrsModule,
-        TypeOrmModule.forFeature([UserEntity, PersonEntity]),
-        JwtModule.registerAsync({
-            imports: [ConfigModule],
-            useFactory: async (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET'),
-                signOptions: { expiresIn: '10m' },
-            }),
-            inject: [ConfigService],
-        }),
-        CompaniesModule,
-    ],
-    controllers: [CreateUserController, LoginController, UserController, PeopleController],
-    providers: [
-        CreateUserHandler,
-        CreatePersonHandler,
-        UpdateUserHandler,
-        DeleteUserHandler,
-        LoginHandler,
-        GetUserHandler,
-        ListUsersHandler,
-        FindPersonHandler,
-        ToggleDayStatusHandler,
-        {
-            provide: UserRepository,
-            useClass: PostgresUserRepository,
-        },
-        {
-            provide: PersonRepository,
-            useClass: PostgresPersonRepository,
-        },
-        {
-            provide: APP_GUARD,
-            useClass: JwtAuthGuard,
-        },
-    ],
-    exports: [UserRepository, PersonRepository],
+  imports: [
+    CqrsModule,
+    TypeOrmModule.forFeature([UserEntity, PersonEntity]),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '10m' },
+      }),
+      inject: [ConfigService],
+    }),
+    CompaniesModule,
+  ],
+  controllers: [
+    CreateUserController,
+    LoginController,
+    UserController,
+    PeopleController,
+  ],
+  providers: [
+    CreateUserHandler,
+    CreatePersonHandler,
+    UpdateUserHandler,
+    DeleteUserHandler,
+    LoginHandler,
+    GetUserHandler,
+    ListUsersHandler,
+    FindPersonHandler,
+    ToggleDayStatusHandler,
+    {
+      provide: UserRepository,
+      useClass: PostgresUserRepository,
+    },
+    {
+      provide: PersonRepository,
+      useClass: PostgresPersonRepository,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
+  exports: [UserRepository, PersonRepository],
 })
-export class UsersModule { }
+export class UsersModule {}

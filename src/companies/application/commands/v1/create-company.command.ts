@@ -1,5 +1,3 @@
 export class CreateCompanyCommand {
-    constructor(
-        public readonly companyName: string,
-    ) { }
+  constructor(public readonly companyName: string) {}
 }

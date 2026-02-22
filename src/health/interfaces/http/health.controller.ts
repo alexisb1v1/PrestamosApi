@@ -1,5 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService, HttpHealthIndicator } from '@nestjs/terminus';
+import {
+  HealthCheck,
+  HealthCheckService,
+  HttpHealthIndicator,
+} from '@nestjs/terminus';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Public } from '../../../users/infrastructure/security/public.decorator';
 
@@ -7,17 +11,17 @@ import { Public } from '../../../users/infrastructure/security/public.decorator'
 @Public()
 @Controller('health')
 export class HealthController {
-    constructor(
-        private health: HealthCheckService,
-        private http: HttpHealthIndicator,
-    ) { }
+  constructor(
+    private health: HealthCheckService,
+    private http: HttpHealthIndicator,
+  ) {}
 
-    @Get()
-    @HealthCheck()
-    @ApiOperation({ summary: 'Check application health' })
-    healthCheck() {
-        return this.health.check([
-            () => this.http.pingCheck('google', 'https://google.com'),
-        ]);
-    }
+  @Get()
+  @HealthCheck()
+  @ApiOperation({ summary: 'Check application health' })
+  healthCheck() {
+    return this.health.check([
+      () => this.http.pingCheck('google', 'https://google.com'),
+    ]);
+  }
 }

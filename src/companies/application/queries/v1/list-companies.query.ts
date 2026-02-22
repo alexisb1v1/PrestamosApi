@@ -1,3 +1,3 @@
 export class ListCompaniesQuery {
-    constructor() { }
+  constructor() {}
 }

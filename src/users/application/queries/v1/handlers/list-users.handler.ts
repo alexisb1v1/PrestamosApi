@@ -6,12 +6,12 @@ import { User } from '../../../../domain/entities/user.entity';
 
 @QueryHandler(ListUsersQuery)
 export class ListUsersHandler implements IQueryHandler<ListUsersQuery, User[]> {
-    constructor(
-        @Inject(UserRepository)
-        private readonly userRepository: UserRepository,
-    ) { }
+  constructor(
+    @Inject(UserRepository)
+    private readonly userRepository: UserRepository,
+  ) {}
 
-    async execute(query: ListUsersQuery): Promise<User[]> {
-        return this.userRepository.findAll(query.username, query.idCompany);
-    }
+  async execute(query: ListUsersQuery): Promise<User[]> {
+    return this.userRepository.findAll(query.username, query.idCompany);
+  }
 }

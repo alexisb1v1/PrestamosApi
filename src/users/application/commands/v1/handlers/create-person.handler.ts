@@ -6,28 +6,35 @@ import { Person } from '../../../../domain/entities/person.entity';
 
 @CommandHandler(CreatePersonCommand)
 export class CreatePersonHandler implements ICommandHandler<CreatePersonCommand> {
-    constructor(
-        @Inject(PersonRepository)
-        private readonly personRepository: PersonRepository,
-    ) { }
+  constructor(
+    @Inject(PersonRepository)
+    private readonly personRepository: PersonRepository,
+  ) {}
 
-    async execute(command: CreatePersonCommand): Promise<string> {
-        const { documentType, documentNumber, firstName, lastName, birthday } = command;
+  async execute(command: CreatePersonCommand): Promise<string> {
+    const { documentType, documentNumber, firstName, lastName, birthday } =
+      command;
 
-        // Check if person already exists
-        const existingPerson = await this.personRepository.findByDocument(documentType, documentNumber);
-        if (existingPerson) {
-            throw new HttpException('Ya existe una persona registrada con este documento', HttpStatus.BAD_REQUEST);
-        }
-
-        const person = new Person(
-            documentType,
-            documentNumber,
-            firstName,
-            lastName,
-            birthday,
-        );
-
-        return this.personRepository.save(person);
+    // Check if person already exists
+    const existingPerson = await this.personRepository.findByDocument(
+      documentType,
+      documentNumber,
+    );
+    if (existingPerson) {
+      throw new HttpException(
+        'Ya existe una persona registrada con este documento',
+        HttpStatus.BAD_REQUEST,
+      );
     }
+
+    const person = new Person(
+      documentType,
+      documentNumber,
+      firstName,
+      lastName,
+      birthday,
+    );
+
+    return this.personRepository.save(person);
+  }
 }

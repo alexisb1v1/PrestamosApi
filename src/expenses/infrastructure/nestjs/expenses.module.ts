@@ -10,20 +10,17 @@ import { ExpenseEntity } from '../repositories/entities/expense.entity';
 import { ExpenseRepository } from '../../domain/repositories/expense.repository';
 
 @Module({
-    imports: [
-        CqrsModule,
-        TypeOrmModule.forFeature([ExpenseEntity]),
-    ],
-    controllers: [ExpensesController],
-    providers: [
-        RegisterExpenseHandler,
-        DeleteExpenseHandler,
-        ListExpensesHandler,
-        {
-            provide: ExpenseRepository,
-            useClass: PostgresExpenseRepository,
-        },
-    ],
-    exports: [ExpenseRepository],
+  imports: [CqrsModule, TypeOrmModule.forFeature([ExpenseEntity])],
+  controllers: [ExpensesController],
+  providers: [
+    RegisterExpenseHandler,
+    DeleteExpenseHandler,
+    ListExpensesHandler,
+    {
+      provide: ExpenseRepository,
+      useClass: PostgresExpenseRepository,
+    },
+  ],
+  exports: [ExpenseRepository],
 })
-export class ExpensesModule { }
+export class ExpensesModule {}

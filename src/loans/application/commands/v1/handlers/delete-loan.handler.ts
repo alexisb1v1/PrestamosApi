@@ -5,25 +5,25 @@ import { LoanRepository } from '../../../../domain/repositories/loan.repository'
 
 @CommandHandler(DeleteLoanCommand)
 export class DeleteLoanHandler implements ICommandHandler<DeleteLoanCommand> {
-    constructor(
-        @Inject(LoanRepository)
-        private readonly loanRepository: LoanRepository,
-    ) { }
+  constructor(
+    @Inject(LoanRepository)
+    private readonly loanRepository: LoanRepository,
+  ) {}
 
-    async execute(command: DeleteLoanCommand): Promise<void> {
-        const { loanId } = command;
+  async execute(command: DeleteLoanCommand): Promise<void> {
+    const { loanId } = command;
 
-        const loan = await this.loanRepository.findById(loanId);
+    const loan = await this.loanRepository.findById(loanId);
 
-        if (!loan) {
-            throw new HttpException(
-                `Préstamo con ID ${loanId} no encontrado.`,
-                HttpStatus.NOT_FOUND
-            );
-        }
-
-        loan.status = 'Eliminado';
-
-        await this.loanRepository.save(loan);
+    if (!loan) {
+      throw new HttpException(
+        `Préstamo con ID ${loanId} no encontrado.`,
+        HttpStatus.NOT_FOUND,
+      );
     }
+
+    loan.status = 'Eliminado';
+
+    await this.loanRepository.save(loan);
+  }
 }

@@ -20,36 +20,31 @@ import { DeactivateCompanyController } from './interfaces/http/v1/deactivate-com
 import { ListCompaniesController } from './interfaces/http/v1/list-companies/list-companies.controller';
 
 const CommandHandlers = [
-    CreateCompanyHandler,
-    UpdateCompanyHandler,
-    DeactivateCompanyHandler,
+  CreateCompanyHandler,
+  UpdateCompanyHandler,
+  DeactivateCompanyHandler,
 ];
 
-const QueryHandlers = [
-    ListCompaniesHandler,
-];
+const QueryHandlers = [ListCompaniesHandler];
 
 const Controllers = [
-    CreateCompanyController,
-    UpdateCompanyController,
-    DeactivateCompanyController,
-    ListCompaniesController,
+  CreateCompanyController,
+  UpdateCompanyController,
+  DeactivateCompanyController,
+  ListCompaniesController,
 ];
 
 @Module({
-    imports: [
-        CqrsModule,
-        TypeOrmModule.forFeature([CompanyEntity]),
-    ],
-    controllers: Controllers,
-    providers: [
-        ...CommandHandlers,
-        ...QueryHandlers,
-        {
-            provide: CompanyRepositoryToken,
-            useClass: PostgresCompanyRepository,
-        },
-    ],
-    exports: [CompanyRepositoryToken],
+  imports: [CqrsModule, TypeOrmModule.forFeature([CompanyEntity])],
+  controllers: Controllers,
+  providers: [
+    ...CommandHandlers,
+    ...QueryHandlers,
+    {
+      provide: CompanyRepositoryToken,
+      useClass: PostgresCompanyRepository,
+    },
+  ],
+  exports: [CompanyRepositoryToken],
 })
-export class CompaniesModule { }
+export class CompaniesModule {}
