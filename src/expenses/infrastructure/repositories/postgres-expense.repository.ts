@@ -10,7 +10,7 @@ export class PostgresExpenseRepository implements ExpenseRepository {
   constructor(
     @InjectRepository(ExpenseEntity)
     private readonly typeOrmRepository: Repository<ExpenseEntity>,
-  ) {}
+  ) { }
 
   async save(expense: Expense): Promise<string> {
     const entity = this.toEntity(expense);
@@ -38,6 +38,24 @@ export class PostgresExpenseRepository implements ExpenseRepository {
     }
 
     const entities = await query.getMany();
+    return entities.map((entity) => this.toDomain(entity));
+  }
+
+  async findAllInDateRange(
+    startDate: Date,
+    endDate: Date,
+    userId?: string,
+  ): Promise<Expense[]> {
+    const qb = this.typeOrmRepository.createQueryBuilder('expense');
+    qb.where("expense.status != 'ELIMINADO'")
+      .andWhere('DATE(expense.expenseDate) >= DATE(:startDate)', { startDate })
+      .andWhere('DATE(expense.expenseDate) <= DATE(:endDate)', { endDate });
+
+    if (userId) {
+      qb.andWhere('expense.userId = :userId', { userId });
+    }
+
+    const entities = await qb.getMany();
     return entities.map((entity) => this.toDomain(entity));
   }
 

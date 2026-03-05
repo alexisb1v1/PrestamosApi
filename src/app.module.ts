@@ -6,6 +6,7 @@ import { LoansModule } from './loans/infrastructure/nestjs/loans.module';
 import { UsersModule } from './users/infrastructure/nestjs/users.module';
 import { ExpensesModule } from './expenses/infrastructure/nestjs/expenses.module';
 import { CompaniesModule } from './companies/companies.module';
+import { ReportsModule } from './reports/infrastructure/nestjs/reports.module';
 
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -44,6 +45,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     UsersModule,
     ExpensesModule,
     CompaniesModule,
+    ReportsModule,
     HealthModule,
   ],
   controllers: [],
@@ -54,4 +56,4 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

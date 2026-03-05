@@ -28,6 +28,23 @@ export interface LoanRepository {
     userId?: string,
     companyId?: string,
   ): Promise<DashboardStats>;
+  findAllInDateRange(
+    startDate: Date,
+    endDate: Date,
+    companyId?: string,
+    userId?: string,
+  ): Promise<Loan[]>;
+  findActiveOnDate(
+    date: Date,
+    companyId?: string,
+    userId?: string,
+  ): Promise<Loan[]>;
+  findActiveInRange(
+    startDate: Date,
+    endDate: Date,
+    companyId?: string,
+    userId?: string,
+  ): Promise<Loan[]>;
 }
 
 export const LoanRepository = Symbol('LoanRepository');

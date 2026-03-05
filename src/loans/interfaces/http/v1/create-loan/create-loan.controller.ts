@@ -13,7 +13,7 @@ import { CreateLoanCommand } from '../../../../application/commands/v1/create-lo
 @ApiBearerAuth()
 @Controller('api/v1/loans')
 export class CreateLoanController {
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(private readonly commandBus: CommandBus) { }
 
   @Post()
   @ApiOperation({ summary: 'Apply for a new loan' })
@@ -22,9 +22,15 @@ export class CreateLoanController {
     description: 'Loan application created successfully.',
   })
   async create(@Body() createLoanDto: CreateLoanDto): Promise<void> {
-    const { idPeople, amount, userId, address } = createLoanDto;
+    const { idPeople, amount, userId, address, days } = createLoanDto;
 
-    const command = new CreateLoanCommand(idPeople, amount, userId, address);
+    const command = new CreateLoanCommand(
+      idPeople,
+      amount,
+      userId,
+      address,
+      days,
+    );
 
     await this.commandBus.execute(command);
   }

@@ -43,7 +43,7 @@ export class PostgresLoanRepository implements LoanRepository {
   constructor(
     @InjectRepository(LoanEntity)
     private readonly typeOrmRepository: Repository<LoanEntity>,
-  ) {}
+  ) { }
 
   async save(loan: Loan): Promise<void> {
     const entity = this.toEntity(loan);
@@ -399,5 +399,71 @@ export class PostgresLoanRepository implements LoanRepository {
       activeClients: Number(kpisRaw?.activeClients ?? 0),
       pendingLoans,
     };
+  }
+
+  async findAllInDateRange(
+    startDate: Date,
+    endDate: Date,
+    companyId?: string,
+    userId?: string,
+  ): Promise<Loan[]> {
+    const qb = this.typeOrmRepository
+      .createQueryBuilder('loan')
+      .leftJoinAndSelect('loan.person', 'person')
+      .leftJoinAndSelect('loan.user', 'user')
+      .where('DATE(loan.created_at) >= DATE(:startDate)', { startDate })
+      .andWhere('DATE(loan.created_at) <= DATE(:endDate)', { endDate })
+      .andWhere("loan.status != 'Eliminado'");
+
+    if (userId) qb.andWhere('loan.userId = :userId', { userId });
+    if (companyId) qb.andWhere('user.id_company = :companyId', { companyId });
+
+    const entities = await qb.getMany();
+    return entities.map((entity) => this.toDomain(entity));
+  }
+
+  async findActiveOnDate(
+    date: Date,
+    companyId?: string,
+    userId?: string,
+  ): Promise<Loan[]> {
+    const dateStr = date.toISOString().split('T')[0];
+    const qb = this.typeOrmRepository
+      .createQueryBuilder('loan')
+      .leftJoinAndSelect('loan.person', 'person')
+      .leftJoinAndSelect('loan.user', 'user')
+      .where('loan.start_date <= :dateStr', { dateStr })
+      .andWhere('loan.end_date >= :dateStr', { dateStr })
+      .andWhere("loan.status = 'Activo'");
+
+    if (userId) qb.andWhere('loan.userId = :userId', { userId });
+    if (companyId) qb.andWhere('user.id_company = :companyId', { companyId });
+
+    const entities = await qb.getMany();
+    return entities.map((entity) => this.toDomain(entity));
+  }
+
+  async findActiveInRange(
+    startDate: Date,
+    endDate: Date,
+    companyId?: string,
+    userId?: string,
+  ): Promise<Loan[]> {
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+
+    const qb = this.typeOrmRepository
+      .createQueryBuilder('loan')
+      .leftJoinAndSelect('loan.person', 'person')
+      .leftJoinAndSelect('loan.user', 'user')
+      .where('loan.start_date <= :endStr', { endStr })
+      .andWhere('loan.end_date >= :startStr', { startStr })
+      .andWhere("loan.status = 'Activo'");
+
+    if (userId) qb.andWhere('loan.userId = :userId', { userId });
+    if (companyId) qb.andWhere('user.id_company = :companyId', { companyId });
+
+    const entities = await qb.getMany();
+    return entities.map((entity) => this.toDomain(entity));
   }
 }

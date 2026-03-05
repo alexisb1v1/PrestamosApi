@@ -10,7 +10,7 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
   constructor(
     @InjectRepository(LoanInstallmentEntity)
     private readonly repository: Repository<LoanInstallmentEntity>,
-  ) {}
+  ) { }
 
   async save(installment: LoanInstallment): Promise<string> {
     const entity = this.repository.create({
@@ -64,5 +64,50 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
 
   async delete(id: string): Promise<void> {
     await this.repository.delete(id);
+  }
+
+  async findAllInDateRange(
+    startDate: Date,
+    endDate: Date,
+    companyId?: string,
+    userId?: string,
+  ): Promise<LoanInstallment[]> {
+    const qb = this.repository
+      .createQueryBuilder('installment')
+      .leftJoinAndSelect('installment.loan', 'loan')
+      .leftJoinAndSelect('loan.person', 'person')
+      .leftJoinAndSelect('loan.user', 'user')
+      .where('DATE(installment.installmentDate) >= DATE(:startDate)', { startDate })
+      .andWhere('DATE(installment.installmentDate) <= DATE(:endDate)', { endDate })
+      .andWhere("installment.status = 'PAID'");
+
+    if (userId) qb.andWhere('installment.userId = :userId', { userId });
+    if (companyId) qb.andWhere('user.id_company = :companyId', { companyId });
+
+    const entities = await qb.getMany();
+    return entities.map((entity) => {
+      const installment = new LoanInstallment(
+        entity.loanId,
+        entity.installmentDate,
+        Number(entity.amount),
+        entity.userId,
+        entity.status,
+        entity.id,
+        entity.user?.username,
+        entity.paymentType,
+      );
+
+      if (entity.loan) {
+        // Asignamos una estructura parcial de Loan que cumpla lo requerido por el Handler
+        (installment as any).loan = {
+          person: entity.loan.person ? {
+            firstName: entity.loan.person.firstName,
+            lastName: entity.loan.person.lastName,
+          } : undefined
+        };
+      }
+
+      return installment;
+    });
   }
 }

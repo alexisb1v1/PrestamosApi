@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateLoanDto {
@@ -30,4 +30,13 @@ export class CreateLoanDto {
   })
   @IsNotEmpty()
   address: string;
+
+  @ApiProperty({
+    example: 24,
+    description: 'Loan duration in days (minimum 24)',
+    required: true,
+  })
+  @IsNumber()
+  @Min(24)
+  days: number;
 }

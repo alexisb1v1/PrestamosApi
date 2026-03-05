@@ -1,3 +1,5 @@
+import { Loan } from './loan.entity';
+
 export class LoanInstallment {
   constructor(
     public readonly loanId: string,
@@ -8,5 +10,6 @@ export class LoanInstallment {
     public readonly id?: string,
     public readonly userName?: string,
     public readonly paymentType?: string,
-  ) {}
+    public readonly loan?: Loan,
+  ) { }
 }

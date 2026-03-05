@@ -12,10 +12,10 @@ export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
     private readonly loanRepository: LoanRepository,
     @Inject(PersonRepository)
     private readonly personRepository: PersonRepository,
-  ) {}
+  ) { }
 
   async execute(command: CreateLoanCommand): Promise<void> {
-    const { idPeople, amount, userId, address } = command;
+    const { idPeople, amount, userId, address, days: requestedDays } = command;
 
     // 0. Check if the person already has an active loan
     const activeLoan = await this.loanRepository.findActiveByPersonId(
@@ -31,7 +31,20 @@ export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
     // 1. Calculations
     const interest = amount * 0.2;
     const totalAmount = amount + interest;
-    const days = 24;
+
+    // Business Rules:
+    // - Minimum 24 days.
+    if (requestedDays < 24) {
+      throw new HttpException(
+        'La cantidad de días mínima para un préstamo es de 24 días.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // - Up to 1000 soles: always 24 days.
+    // - More than 1000 soles: use requested days.
+    const days = amount <= 1000 ? 24 : requestedDays;
+
     const fee = totalAmount / days;
 
     // 2. Start Date (Tomorrow, skip Sunday)
