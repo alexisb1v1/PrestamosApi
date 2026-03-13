@@ -32,7 +32,7 @@ export class LoginResult {
         birthday?: Date;
       };
     },
-  ) {}
+  ) { }
 }
 
 @QueryHandler(LoginQuery)
@@ -45,7 +45,7 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
     @Inject(CompanyRepositoryToken)
     private readonly companyRepository: CompanyRepository,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   async execute(query: LoginQuery): Promise<LoginResult> {
     try {
@@ -58,11 +58,32 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
         return new LoginResult(false, 'Contraseña o usuario incorrecto');
       }
 
-      if (user.status !== 'ACTIVE') {
+      if (user.status !== 'ACTIVE' && user.status !== 'ACTIVO') {
         return new LoginResult(false, 'Usuario inactivo');
       }
 
-      // 2. Verify password - Lazy Migration Strategy
+      // 2. Validate Company Status (Excluding OWNER)
+      let companyStatus: string | undefined;
+      if (user.idCompany) {
+        const company = await this.companyRepository.findById(user.idCompany);
+        if (company) {
+          const rawStatus = company.status;
+          // Standardize status for frontend
+          if (rawStatus === 'ACTIVO') companyStatus = 'ACTIVE';
+          else if (rawStatus === 'INACTIVO') companyStatus = 'INACTIVE';
+          else if (rawStatus === 'SUSPENDIDO') companyStatus = 'SUSPENDED';
+          else companyStatus = rawStatus;
+
+          // SECURITY RULE: Block login if company is not active, UNLESS user is OWNER
+          // Support both 'ACTIVE' and 'ACTIVO' for backward compatibility
+          const isActive = companyStatus === 'ACTIVE' || companyStatus === 'ACTIVO';
+          if (user.profile !== 'OWNER' && !isActive) {
+            return new LoginResult(false, 'La empresa asociada está inactiva o suspendida. Por favor, contacte al administrador.');
+          }
+        }
+      }
+
+      // 3. Verify password - Lazy Migration Strategy
       const storedHash = user.passwordHash;
       const isBcryptHash =
         storedHash.startsWith('$2b$') || storedHash.startsWith('$2a$');
@@ -87,7 +108,7 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
         return new LoginResult(false, 'Contraseña o usuario incorrecto');
       }
 
-      // 3. Get person data
+      // 4. Get person data
       const person = await this.personRepository.findById(
         user.idPeople.toString(),
       );
@@ -96,7 +117,7 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
         return new LoginResult(false, 'Datos del usuario incompletos');
       }
 
-      // 4. Generate JWT token
+      // 5. Generate JWT token
       const payload = {
         sub: user.id,
         username: user.username,
@@ -105,15 +126,6 @@ export class LoginHandler implements IQueryHandler<LoginQuery, LoginResult> {
       };
 
       const token = this.jwtService.sign(payload);
-
-      // 5. Get Company Status if idCompany exists
-      let companyStatus: string | undefined;
-      if (user.idCompany) {
-        const company = await this.companyRepository.findById(user.idCompany);
-        if (company) {
-          companyStatus = company.status;
-        }
-      }
 
       // 6. Return user with person data and token
       return new LoginResult(true, 'Login exitoso', token, {

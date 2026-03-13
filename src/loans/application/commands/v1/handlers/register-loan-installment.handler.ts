@@ -12,7 +12,7 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<RegisterL
     private readonly repository: LoanInstallmentRepository,
     @Inject(LoanRepository)
     private readonly loanRepository: LoanRepository,
-  ) {}
+  ) { }
 
   async execute(command: RegisterLoanInstallmentCommand): Promise<string> {
     const { loanId, amount, userId, paymentType } = command;

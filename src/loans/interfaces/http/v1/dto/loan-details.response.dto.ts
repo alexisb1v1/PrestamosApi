@@ -16,6 +16,9 @@ export class LoanInstallmentDetailDto {
 
   @ApiProperty()
   registeredBy: string;
+
+  @ApiProperty()
+  registeredByUserId: string;
 }
 
 export class LoanDetailsResponseDto {
@@ -37,6 +40,7 @@ export class LoanDetailsResponseDto {
       amount: inst.amount,
       status: inst.status,
       registeredBy: inst.userName || 'Unknown',
+      registeredByUserId: inst.userId || '',
     }));
   }
 }

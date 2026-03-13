@@ -1,4 +1,4 @@
-import { Controller, Patch, Param } from '@nestjs/common';
+import { Controller, Patch, Param, Body } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -7,22 +7,26 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { DeactivateCompanyCommand } from '../../../../application/commands/v1/deactivate-company.command';
+import { UpdateCompanyStatusCommand } from '../../../../application/commands/v1/update-company-status.command';
+import { UpdateCompanyStatusRequestDto } from '../dto/update-company-status-request.dto';
 
 @ApiTags('Companies')
 @ApiBearerAuth()
 @Controller('api/v1/companies')
-export class DeactivateCompanyController {
-  constructor(private readonly commandBus: CommandBus) {}
+export class UpdateCompanyStatusController {
+  constructor(private readonly commandBus: CommandBus) { }
 
-  @Patch(':id/deactivate')
-  @ApiOperation({ summary: 'Deactivate a company' })
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Update company status' })
   @ApiParam({ name: 'id', type: 'string', description: 'Company ID' })
-  @ApiResponse({ status: 200, description: 'Company deactivated successfully' })
+  @ApiResponse({ status: 200, description: 'Company status updated successfully' })
   @ApiResponse({ status: 404, description: 'Company not found' })
-  async deactivate(@Param('id') id: string): Promise<{ message: string }> {
-    const command = new DeactivateCompanyCommand(id);
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateCompanyStatusRequestDto,
+  ): Promise<{ message: string }> {
+    const command = new UpdateCompanyStatusCommand(id, dto.status);
     await this.commandBus.execute(command);
-    return { message: 'Empresa desactivada exitosamente' };
+    return { message: 'Estado de empresa actualizado exitosamente' };
   }
 }

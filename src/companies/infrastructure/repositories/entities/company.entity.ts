@@ -12,7 +12,7 @@ export class CompanyEntity {
     name: 'status',
     type: 'character varying',
     length: 10,
-    default: 'ACTIVO',
+    default: 'ACTIVE',
   })
   status: string;
 

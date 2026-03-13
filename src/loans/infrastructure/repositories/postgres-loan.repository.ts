@@ -164,7 +164,8 @@ export class PostgresLoanRepository implements LoanRepository {
             inst.userId,
             inst.status,
             inst.id,
-            inst.user?.username,
+            inst.user?.username || inst.userName,
+            inst.paymentType,
           ),
       );
     }

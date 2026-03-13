@@ -11,7 +11,7 @@ export class DeactivateCompanyHandler implements ICommandHandler<DeactivateCompa
   constructor(
     @Inject(CompanyRepositoryToken)
     private readonly companyRepository: CompanyRepository,
-  ) {}
+  ) { }
 
   async execute(command: DeactivateCompanyCommand): Promise<void> {
     const company = await this.companyRepository.findById(command.id);
@@ -20,7 +20,7 @@ export class DeactivateCompanyHandler implements ICommandHandler<DeactivateCompa
       throw new HttpException('Empresa no encontrada', HttpStatus.NOT_FOUND);
     }
 
-    company.status = 'INACTIVO';
+    company.status = 'INACTIVE';
 
     await this.companyRepository.update(company);
   }

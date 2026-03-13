@@ -8,7 +8,7 @@ import { CompanyRepositoryToken } from './domain/repositories/company.repository
 // Command Handlers
 import { CreateCompanyHandler } from './application/commands/v1/handlers/create-company.handler';
 import { UpdateCompanyHandler } from './application/commands/v1/handlers/update-company.handler';
-import { DeactivateCompanyHandler } from './application/commands/v1/handlers/deactivate-company.handler';
+import { UpdateCompanyStatusHandler } from './application/commands/v1/handlers/update-company-status.handler';
 
 // Query Handlers
 import { ListCompaniesHandler } from './application/queries/v1/handlers/list-companies.handler';
@@ -16,13 +16,13 @@ import { ListCompaniesHandler } from './application/queries/v1/handlers/list-com
 // Controllers
 import { CreateCompanyController } from './interfaces/http/v1/create-company/create-company.controller';
 import { UpdateCompanyController } from './interfaces/http/v1/update-company/update-company.controller';
-import { DeactivateCompanyController } from './interfaces/http/v1/deactivate-company/deactivate-company.controller';
+import { UpdateCompanyStatusController } from './interfaces/http/v1/deactivate-company/deactivate-company.controller';
 import { ListCompaniesController } from './interfaces/http/v1/list-companies/list-companies.controller';
 
 const CommandHandlers = [
   CreateCompanyHandler,
   UpdateCompanyHandler,
-  DeactivateCompanyHandler,
+  UpdateCompanyStatusHandler,
 ];
 
 const QueryHandlers = [ListCompaniesHandler];
@@ -30,7 +30,7 @@ const QueryHandlers = [ListCompaniesHandler];
 const Controllers = [
   CreateCompanyController,
   UpdateCompanyController,
-  DeactivateCompanyController,
+  UpdateCompanyStatusController,
   ListCompaniesController,
 ];
 
@@ -47,4 +47,4 @@ const Controllers = [
   ],
   exports: [CompanyRepositoryToken],
 })
-export class CompaniesModule {}
+export class CompaniesModule { }

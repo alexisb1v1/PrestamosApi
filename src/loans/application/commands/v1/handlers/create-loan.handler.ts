@@ -41,9 +41,9 @@ export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
       );
     }
 
-    // - Up to 1000 soles: always 24 days.
-    // - More than 1000 soles: use requested days.
-    const days = amount <= 1000 ? 24 : requestedDays;
+    // - Menos de 1000 soles: siempre 24 días.
+    // - 1000 soles o más: usar días solicitados.
+    const days = amount < 1000 ? 24 : requestedDays;
 
     const fee = totalAmount / days;
 

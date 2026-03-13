@@ -12,10 +12,10 @@ export class CreateCompanyHandler implements ICommandHandler<CreateCompanyComman
   constructor(
     @Inject(CompanyRepositoryToken)
     private readonly companyRepository: CompanyRepository,
-  ) {}
+  ) { }
 
   async execute(command: CreateCompanyCommand): Promise<string> {
-    const company = new Company(command.companyName, 'ACTIVO', new Date());
+    const company = new Company(command.companyName, 'ACTIVE', new Date());
 
     const saved = await this.companyRepository.save(company);
     return saved.id!;
