@@ -14,10 +14,7 @@ import { UpdateCompanyStatusHandler } from './application/commands/v1/handlers/u
 import { ListCompaniesHandler } from './application/queries/v1/handlers/list-companies.handler';
 
 // Controllers
-import { CreateCompanyController } from './interfaces/http/v1/create-company/create-company.controller';
-import { UpdateCompanyController } from './interfaces/http/v1/update-company/update-company.controller';
-import { UpdateCompanyStatusController } from './interfaces/http/v1/deactivate-company/deactivate-company.controller';
-import { ListCompaniesController } from './interfaces/http/v1/list-companies/list-companies.controller';
+import { CompanyController } from './interfaces/http/v1/company/company.controller';
 
 const CommandHandlers = [
   CreateCompanyHandler,
@@ -28,10 +25,7 @@ const CommandHandlers = [
 const QueryHandlers = [ListCompaniesHandler];
 
 const Controllers = [
-  CreateCompanyController,
-  UpdateCompanyController,
-  UpdateCompanyStatusController,
-  ListCompaniesController,
+  CompanyController,
 ];
 
 @Module({

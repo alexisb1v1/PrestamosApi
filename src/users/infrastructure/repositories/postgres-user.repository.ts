@@ -43,6 +43,13 @@ export class PostgresUserRepository implements UserRepository {
     );
   }
 
+  async updateCollectionOrder(userId: string, order: string[]): Promise<void> {
+    await this.typeOrmRepository.update(
+      { id: userId },
+      { collectionOrder: order },
+    );
+  }
+
   async findAll(username?: string, idCompany?: number): Promise<User[]> {
     const where: import('typeorm').FindOptionsWhere<UserEntity> = {};
     if (username) {
@@ -72,6 +79,7 @@ export class PostgresUserRepository implements UserRepository {
     if (user.idCompany) {
       entity.idCompany = user.idCompany;
     }
+    entity.collectionOrder = user.collectionOrder ?? null;
     return entity;
   }
 
@@ -84,7 +92,8 @@ export class PostgresUserRepository implements UserRepository {
       Number(entity.idPeople),
       entity.id,
       entity.isDayClosed,
-      entity.idCompany, // Add idCompany mapping
+      entity.idCompany,
+      entity.collectionOrder ?? undefined,
     );
 
     if (entity.person) {

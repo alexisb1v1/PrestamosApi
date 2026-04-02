@@ -5,21 +5,13 @@ import { UserRepository } from '../../../../domain/repositories/user.repository'
 import { User } from '../../../../domain/entities/user.entity';
 import { PersonRepository } from '../../../../domain/repositories/person.repository';
 import { Person } from '../../../../domain/entities/person.entity';
-
-export class GetUserResult {
-  constructor(
-    public readonly success: boolean,
-    public readonly message: string,
-    public readonly user?: User,
-    public readonly person?: Person,
-  ) {}
-}
+import { Result, ok, err } from 'neverthrow';
+import { AppError } from '../../../../../common/errors/app-errors';
+import { GetUserResultDto } from '../dto/user-app.dto';
+import { UserMapper } from '../mappers/user.mapper';
 
 @QueryHandler(GetUserQuery)
-export class GetUserHandler implements IQueryHandler<
-  GetUserQuery,
-  GetUserResult
-> {
+export class GetUserHandler implements IQueryHandler<GetUserQuery, Result<GetUserResultDto, AppError>> {
   constructor(
     @Inject(UserRepository)
     private readonly userRepository: UserRepository,
@@ -27,16 +19,13 @@ export class GetUserHandler implements IQueryHandler<
     private readonly personRepository: PersonRepository,
   ) {}
 
-  async execute(query: GetUserQuery): Promise<GetUserResult> {
+  async execute(query: GetUserQuery): Promise<Result<GetUserResultDto, AppError>> {
     const user = await this.userRepository.findById(query.id);
     if (!user) {
-      return new GetUserResult(false, 'User not found');
+      return err('NOT_FOUND');
     }
 
-    const person = await this.personRepository.findById(
-      user.idPeople.toString(),
-    );
-
-    return new GetUserResult(true, 'User found', user, person || undefined);
+    const person = await this.personRepository.findById(user.idPeople.toString());
+    return ok(UserMapper.toGetUserResult(user, person ?? undefined));
   }
 }

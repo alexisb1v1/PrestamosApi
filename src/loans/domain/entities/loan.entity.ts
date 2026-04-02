@@ -15,6 +15,7 @@ export class Loan {
   userId: number;
   status: string;
   address: string;
+  phone: string;
   paidToday?: number;
   remainingAmount?: number;
   inIntervalPayment?: number;
@@ -34,6 +35,7 @@ export class Loan {
     userId: number,
     status: string,
     address: string,
+    phone: string,
     id?: string,
   ) {
     this.id = id;
@@ -48,5 +50,20 @@ export class Loan {
     this.userId = userId;
     this.status = status;
     this.address = address;
+    this.phone = phone;
+  }
+
+  /**
+   * Valida si el préstamo puede recibir un pago en la fecha indicada.
+   * Regla: La fecha de pago debe ser mayor o igual a la fecha de inicio del préstamo.
+   */
+  canAcceptPayment(paymentDate: Date): boolean {
+    const start = new Date(this.startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const target = new Date(paymentDate);
+    target.setHours(0, 0, 0, 0);
+
+    return target >= start;
   }
 }

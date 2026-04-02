@@ -6,6 +6,7 @@ export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findAll(username?: string, idCompany?: number): Promise<User[]>;
   updatePasswordHash(userId: string, newPasswordHash: string): Promise<void>;
+  updateCollectionOrder(userId: string, order: string[]): Promise<void>;
 }
 
 export const UserRepository = Symbol('UserRepository');

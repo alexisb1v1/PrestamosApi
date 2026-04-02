@@ -6,18 +6,19 @@ import {
   CompanyRepositoryToken,
 } from '../../../../domain/repositories/company.repository';
 import { Company } from '../../../../domain/entities/company.entity';
+import { Result, ok } from 'neverthrow';
+import { AppError } from '../../../../../common/errors/app-errors';
 
 @CommandHandler(CreateCompanyCommand)
-export class CreateCompanyHandler implements ICommandHandler<CreateCompanyCommand> {
+export class CreateCompanyHandler implements ICommandHandler<CreateCompanyCommand, Result<string, AppError>> {
   constructor(
     @Inject(CompanyRepositoryToken)
     private readonly companyRepository: CompanyRepository,
-  ) { }
+  ) {}
 
-  async execute(command: CreateCompanyCommand): Promise<string> {
+  async execute(command: CreateCompanyCommand): Promise<Result<string, AppError>> {
     const company = new Company(command.companyName, 'ACTIVE', new Date());
-
     const saved = await this.companyRepository.save(company);
-    return saved.id!;
+    return ok(saved.id!);
   }
 }

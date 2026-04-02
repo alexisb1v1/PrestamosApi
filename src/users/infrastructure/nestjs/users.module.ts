@@ -11,16 +11,16 @@ import { GetUserHandler } from '../../application/queries/v1/handlers/get-user.h
 import { ListUsersHandler } from '../../application/queries/v1/handlers/list-users.handler';
 import { FindPersonHandler } from '../../application/queries/v1/handlers/find-person.handler';
 import { ToggleDayStatusHandler } from '../../application/commands/v1/handlers/toggle-day-status.handler';
+import { UpdateCollectionOrderHandler } from '../../application/commands/v1/handlers/update-collection-order.handler';
 import { UserRepository } from '../../domain/repositories/user.repository';
 import { PersonRepository } from '../../domain/repositories/person.repository';
 import { PostgresUserRepository } from '../repositories/postgres-user.repository';
 import { PostgresPersonRepository } from '../repositories/postgres-person.repository';
 import { UserEntity } from '../repositories/entities/user.entity';
 import { PersonEntity } from '../repositories/entities/person.entity';
-import { CreateUserController } from '../../interfaces/http/v1/create-user/create-user.controller';
+import { UserController } from '../../interfaces/http/v1/user/user.controller';
+import { PeopleController } from '../../interfaces/http/v1/people/people.controller';
 import { LoginController } from '../../interfaces/http/v1/login/login.controller';
-import { UserController } from '../../interfaces/http/v1/user.controller';
-import { PeopleController } from '../../interfaces/http/v1/people.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -41,7 +41,6 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
     CompaniesModule,
   ],
   controllers: [
-    CreateUserController,
     LoginController,
     UserController,
     PeopleController,
@@ -56,6 +55,7 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
     ListUsersHandler,
     FindPersonHandler,
     ToggleDayStatusHandler,
+    UpdateCollectionOrderHandler,
     {
       provide: UserRepository,
       useClass: PostgresUserRepository,

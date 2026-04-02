@@ -2,42 +2,24 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { DeleteUserCommand } from '../delete-user.command';
 import { Inject } from '@nestjs/common';
 import { UserRepository } from '../../../../domain/repositories/user.repository';
-
-export class DeleteUserResult {
-  constructor(
-    public readonly success: boolean,
-    public readonly message: string,
-  ) {}
-}
+import { Result, ok, err } from 'neverthrow';
+import { AppError } from '../../../../../common/errors/app-errors';
 
 @CommandHandler(DeleteUserCommand)
-export class DeleteUserHandler implements ICommandHandler<
-  DeleteUserCommand,
-  DeleteUserResult
-> {
+export class DeleteUserHandler implements ICommandHandler<DeleteUserCommand, Result<void, AppError>> {
   constructor(
     @Inject(UserRepository)
     private readonly userRepository: UserRepository,
   ) {}
 
-  async execute(command: DeleteUserCommand): Promise<DeleteUserResult> {
-    try {
-      const user = await this.userRepository.findById(command.id);
-      if (!user) {
-        return new DeleteUserResult(false, 'User not found');
-      }
-
-      user.status = 'INACTIVE';
-      await this.userRepository.save(user);
-
-      return new DeleteUserResult(true, 'User deactivated successfully');
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      return new DeleteUserResult(
-        false,
-        `Failed to delete user: ${errorMessage}`,
-      );
+  async execute(command: DeleteUserCommand): Promise<Result<void, AppError>> {
+    const user = await this.userRepository.findById(command.id);
+    if (!user) {
+      return err('NOT_FOUND');
     }
+
+    user.status = 'INACTIVE';
+    await this.userRepository.save(user);
+    return ok(undefined);
   }
 }

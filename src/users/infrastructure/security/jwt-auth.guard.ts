@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
+import * as crypto from 'crypto';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
@@ -41,10 +42,20 @@ export class JwtAuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
+
+      // 2. Validate Fingerprint
+      const fingerprint = request.headers['x-fingerprint'] as string;
+      if (!this.isValidFingerprint(fingerprint, payload.fgp)) {
+        throw new UnauthorizedException('Invalid device fingerprint');
+      }
+
       // We're assigning the payload to the request object here
       // so that we can access it in our route handlers
       request.user = payload;
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException();
     }
     return true;
@@ -53,5 +64,14 @@ export class JwtAuthGuard implements CanActivate {
   private extractTokenFromHeader(request: Request): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
     return type === 'Bearer' ? token : undefined;
+  }
+
+  private isValidFingerprint(fingerprint: string, hash: string): boolean {
+    if (!fingerprint || !hash) return false;
+    const computedHash = crypto
+      .createHash('sha256')
+      .update(fingerprint)
+      .digest('hex');
+    return computedHash === hash;
   }
 }

@@ -5,37 +5,55 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
 
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : { message: (exception as Error).message || 'Internal server error' };
+    // Valores por defecto basados en nuestro diccionario para evitar exponer "leaks" del sistema
+    let errorCode = 'UNEXPECTED_ERROR';
+    let errorMessage = 'Error inesperado del servidor';
 
-    const messageObj =
-      typeof message === 'object' && message !== null
-        ? (message as Record<string, unknown>)
-        : null;
+    if (exception instanceof HttpException) {
+      const exceptionResponse = exception.getResponse();
 
+      if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+        const resObj = exceptionResponse as Record<string, any>;
+        
+        // 1. Errores formateados internamente por nosotros via matchResult ({ errorCode, message })
+        if (resObj.errorCode) {
+          errorCode = resObj.errorCode;
+          errorMessage = resObj.message;
+        } 
+        // 2. Errores lanzados por Validadores automáticos de NestJS (class-validator)
+        else if (resObj.message) {
+          errorCode = status === 400 ? 'INVALID_INPUT' : 'HTTP_ERROR';
+          errorMessage = Array.isArray(resObj.message) ? resObj.message[0] : resObj.message;
+        }
+      } else if (typeof exceptionResponse === 'string') {
+        errorCode = 'HTTP_ERROR';
+        errorMessage = exceptionResponse;
+      }
+    } else {
+      // 3. Excepciones de red, base de datos o sintaxis (500)
+      // Mantenemos el UNEXPECTED_ERROR encubierto pero lo registramos en logs reales del servidor
+      console.error('Unhandled System Exception:', exception);
+    }
+
+    // Estructura limpia y estricta definida
     const errorResponse = {
       statusCode: status,
+      errorCode,
+      message: errorMessage,
       timestamp: new Date().toISOString(),
-      path: request.url,
-      method: request.method,
-      error: messageObj?.error || 'Error',
-      message: messageObj?.message || message,
     };
 
     response.status(status).json(errorResponse);

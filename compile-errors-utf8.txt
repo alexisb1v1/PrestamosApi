@@ -1,0 +1,7 @@
+﻿src/companies/interfaces/http/v1/company/dto/company.response.dto.ts(2,25): error TS2307: Cannot find module '../../../../domain/entities/company.entity' or its corresponding type declarations.
+src/expenses/interfaces/http/v1/expense/dto/expense.response.dto.ts(2,25): error TS2307: Cannot find module '../../../../domain/entities/expense.entity' or its corresponding type declarations.
+src/loans/interfaces/http/v1/dashboard/dto/dashboard.response.dto.ts(2,33): error TS2307: Cannot find module './loan.response.dto' or its corresponding type declarations.
+src/loans/interfaces/http/v1/dashboard/dto/dashboard.response.dto.ts(39,18): error TS2307: Cannot find module '../../../../domain/repositories/loan.repository' or its corresponding type declarations.
+src/loans/interfaces/http/v1/loan/dto/loan-details.response.dto.ts(2,22): error TS2307: Cannot find module '../../../../domain/entities/loan.entity' or its corresponding type declarations.
+src/loans/interfaces/http/v1/loan/dto/loan.response.dto.ts(1,22): error TS2307: Cannot find module '../../../../domain/entities/loan.entity' or its corresponding type declarations.
+src/reports/application/queries/v1/handlers/get-loan-report.handler.ts(12,8): error TS2307: Cannot find module '../../../../interfaces/http/v1/dto/loan-report-response.dto' or its corresponding type declarations.

@@ -19,4 +19,12 @@ export class Company {
     this.createdAt = createdAt;
     this.label = label;
   }
+
+  getNormalizedStatus(): string {
+    const rawStatus = this.status;
+    if (rawStatus === 'ACTIVO') return 'ACTIVE';
+    if (rawStatus === 'INACTIVO') return 'INACTIVE';
+    if (rawStatus === 'SUSPENDIDO') return 'SUSPENDED';
+    return rawStatus;
+  }
 }

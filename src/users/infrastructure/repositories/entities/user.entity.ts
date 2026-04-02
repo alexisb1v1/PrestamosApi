@@ -41,4 +41,7 @@ export class UserEntity {
   @ManyToOne(() => CompanyEntity)
   @JoinColumn({ name: 'id_company' })
   company: CompanyEntity;
+
+  @Column({ name: 'collection_order', type: 'jsonb', nullable: true })
+  collectionOrder: string[] | null;
 }

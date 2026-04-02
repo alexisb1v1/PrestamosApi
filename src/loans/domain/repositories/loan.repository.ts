@@ -11,15 +11,19 @@ export interface DashboardStats {
   };
   activeClients: number;
   pendingLoans: Loan[];
+  userId?: string;
+  companyId?: string;
 }
 
 export interface LoanRepository {
   save(loan: Loan): Promise<void>;
+  updateInfo(id: string, phone: string, address: string): Promise<void>;
   findAll(): Promise<Loan[]>;
   findById(id: string): Promise<Loan | null>;
   findAllWithFilters(
+    isLiquidated: boolean,
     userId?: number,
-    documentNumber?: string,
+    searchQuery?: string,
     companyId?: number,
   ): Promise<Loan[]>;
   findActiveByPersonId(personId: string): Promise<Loan | null>;

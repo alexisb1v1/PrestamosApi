@@ -56,6 +56,9 @@ export class LoanEntity {
   @Column({ length: 255, nullable: true })
   address: string;
 
+  @Column({ length: 20, nullable: false, default: '' })
+  phone: string;
+
   @OneToMany(() => LoanInstallmentEntity, (installment) => installment.loan)
   installments: LoanInstallmentEntity[];
 }

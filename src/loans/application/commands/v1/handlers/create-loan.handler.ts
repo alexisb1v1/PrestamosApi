@@ -1,83 +1,55 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateLoanCommand } from '../create-loan.command';
-import { Inject, HttpException, HttpStatus } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { LoanRepository } from '../../../../domain/repositories/loan.repository';
-import { PersonRepository } from '../../../../../users/domain/repositories/person.repository';
 import { Loan } from '../../../../domain/entities/loan.entity';
+import { Result, ok, err } from 'neverthrow';
+import { AppError } from '../../../../../common/errors/app-errors';
 
 @CommandHandler(CreateLoanCommand)
-export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
+export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand, Result<void, AppError>> {
   constructor(
     @Inject(LoanRepository)
     private readonly loanRepository: LoanRepository,
-    @Inject(PersonRepository)
-    private readonly personRepository: PersonRepository,
-  ) { }
+  ) {}
 
-  async execute(command: CreateLoanCommand): Promise<void> {
-    const { idPeople, amount, userId, address, days: requestedDays } = command;
+  async execute(command: CreateLoanCommand): Promise<Result<void, AppError>> {
+    const { idPeople, amount, userId, address, phone, days: requestedDays } = command;
 
-    // 0. Check if the person already has an active loan
-    const activeLoan = await this.loanRepository.findActiveByPersonId(
-      idPeople.toString(),
-    );
+    // 0. Validar que no tenga préstamo activo
+    const activeLoan = await this.loanRepository.findActiveByPersonId(idPeople.toString());
     if (activeLoan) {
-      throw new HttpException(
-        `La persona ya tiene un préstamo activo No se puede registrar uno nuevo.`,
-        HttpStatus.BAD_REQUEST,
-      );
+      return err('ALREADY_EXISTS');
     }
 
-    // 1. Calculations
+    // 1. Regla de negocio: mínimo 24 días
+    if (requestedDays < 24) {
+      return err('INVALID_INPUT');
+    }
+
+    // 2. Cálculos
     const interest = amount * 0.2;
     const totalAmount = amount + interest;
-
-    // Business Rules:
-    // - Minimum 24 days.
-    if (requestedDays < 24) {
-      throw new HttpException(
-        'La cantidad de días mínima para un préstamo es de 24 días.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // - Menos de 1000 soles: siempre 24 días.
-    // - 1000 soles o más: usar días solicitados.
     const days = amount < 1000 ? 24 : requestedDays;
-
     const fee = totalAmount / days;
 
-    // 2. Start Date (Tomorrow, skip Sunday)
+    // 3. Fecha de inicio (mañana, sin domingo)
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
     startDate.setDate(startDate.getDate() + 1);
-
     if (startDate.getDay() === 0) {
-      // Sunday
-      startDate.setDate(startDate.getDate() + 1); // Monday
+      startDate.setDate(startDate.getDate() + 1);
     }
 
-    // 3. End Date (work days, skip Sundays)
-    // IMPORTANTE: start_date cuenta como día 1 de pago
+    // 4. Fecha de fin (días hábiles, sin domingos)
     const endDate = new Date(startDate);
-    let workDaysAdded = 0;
-
-    // Contar el start_date como día 1 si no es domingo
-    if (startDate.getDay() !== 0) {
-      workDaysAdded = 1;
-    }
-
-    // Sumar los días restantes (23 más para completar 24)
+    let workDaysAdded = startDate.getDay() !== 0 ? 1 : 0;
     while (workDaysAdded < days) {
       endDate.setDate(endDate.getDate() + 1);
       if (endDate.getDay() !== 0) {
-        // Not Sunday
         workDaysAdded++;
       }
     }
-
-    const createdAt = new Date();
-    const status = 'Activo';
 
     const newLoan = new Loan(
       idPeople,
@@ -87,12 +59,14 @@ export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand> {
       interest,
       fee,
       days,
-      createdAt,
+      new Date(),
       userId,
-      status,
+      'Activo',
       address,
+      phone,
     );
 
     await this.loanRepository.save(newLoan);
+    return ok(undefined);
   }
 }

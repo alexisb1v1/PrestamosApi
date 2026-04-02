@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository, Not, Brackets } from 'typeorm';
 import {
   LoanRepository,
   DashboardStats,
@@ -50,6 +50,10 @@ export class PostgresLoanRepository implements LoanRepository {
     await this.typeOrmRepository.save(entity);
   }
 
+  async updateInfo(id: string, phone: string, address: string): Promise<void> {
+    await this.typeOrmRepository.update(id, { phone, address });
+  }
+
   async findAll(): Promise<Loan[]> {
     const entities = await this.typeOrmRepository.find({
       where: { status: Not('Eliminado') },
@@ -71,8 +75,9 @@ export class PostgresLoanRepository implements LoanRepository {
   }
 
   async findAllWithFilters(
+    isLiquidated: boolean,
     userId?: number,
-    documentNumber?: string,
+    searchQuery?: string,
     companyId?: number,
   ): Promise<Loan[]> {
     // Optimized: Using DATE_TRUNC for index-friendly date comparisons
@@ -110,13 +115,23 @@ export class PostgresLoanRepository implements LoanRepository {
       .addGroupBy('"user".id');
 
     if (userId) qb.andWhere('loan.userId = :userId', { userId });
-    if (documentNumber)
-      qb.andWhere('person.documentNumber = :documentNumber', {
-        documentNumber,
-      });
+
+    if (searchQuery) {
+      qb.andWhere(new Brackets(bq => {
+        bq.where('person.documentNumber ILIKE :term', { term: `%${searchQuery}%` })
+          .orWhere('person.firstName ILIKE :term', { term: `%${searchQuery}%` })
+          .orWhere('person.lastName ILIKE :term', { term: `%${searchQuery}%` });
+      }));
+    }
+
     if (companyId) qb.andWhere('"user".id_company = :companyId', { companyId });
 
-    qb.andWhere("loan.status != 'Eliminado'");
+    if (isLiquidated) {
+      qb.andWhere("loan.status = 'Liquidado'");
+    } else {
+      qb.andWhere("loan.status != 'Liquidado'");
+      qb.andWhere("loan.status != 'Eliminado'");
+    }
 
     const { entities, raw } = await qb.getRawAndEntities<LoanRawResult>();
 
@@ -189,6 +204,7 @@ export class PostgresLoanRepository implements LoanRepository {
     entity.userId = loan.userId.toString();
     entity.status = loan.status;
     entity.address = loan.address;
+    entity.phone = loan.phone;
     return entity;
   }
 
@@ -205,6 +221,7 @@ export class PostgresLoanRepository implements LoanRepository {
       Number(entity.userId),
       entity.status,
       entity.address,
+      entity.phone,
       entity.id,
     );
 
@@ -290,11 +307,13 @@ export class PostgresLoanRepository implements LoanRepository {
         'todayInstallment',
         `"todayInstallment".installment_date >= ${todayStartSql} AND "todayInstallment".installment_date < ${todayEndSql}`,
       )
-      .where("loan.status = 'Activo'")
-      .andWhere(
-        `${todayStartSql} >= loan.start_date AND ${todayStartSql} < loan.end_date`,
+      .andWhere("loan.status = 'Activo'")
+      .andWhere(`${todayStartSql} >= loan.start_date`) // Solo que ya haya empezado
+      .andWhere('"todayInstallment".id IS NULL') // que no haya pagado hoy
+      .addSelect(
+        `CASE WHEN ${todayStartSql} < loan.end_date THEN 1 ELSE 0 END`,
+        'inIntervalPayment',
       )
-      .andWhere('"todayInstallment".id IS NULL') // no pago hoy
       .addSelect('COALESCE(SUM(allInstallments.amount), 0)', 'installmentsSum')
       .groupBy('loan.id')
       .addGroupBy('person.id')
@@ -318,7 +337,9 @@ export class PostgresLoanRepository implements LoanRepository {
       loan.remainingAmount = loan.amount + loan.interest - installmentsSum;
 
       loan.paidToday = 0;
-      loan.inIntervalPayment = 1;
+      loan.inIntervalPayment = Number(
+        pendingRaw.raw[index].inIntervalPayment ?? 0,
+      );
 
       return loan;
     });
@@ -399,6 +420,8 @@ export class PostgresLoanRepository implements LoanRepository {
       },
       activeClients: Number(kpisRaw?.activeClients ?? 0),
       pendingLoans,
+      userId,
+      companyId,
     };
   }
 
