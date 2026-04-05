@@ -17,7 +17,7 @@ class PersonDto {
   lastName: string;
 
   @ApiProperty({ required: false })
-  birthday?: Date;
+  birthday: Date | null;
 }
 
 class UserDataDto {

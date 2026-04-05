@@ -8,7 +8,7 @@ export class CreateUserCommand {
     public readonly documentNumber: string,
     public readonly firstName: string,
     public readonly lastName: string,
-    public readonly birthday: Date,
+    public readonly birthday: Date | null,
     public readonly idCompany?: string,
-  ) {}
+  ) { }
 }

@@ -36,7 +36,7 @@ export class UserResponseDto {
   lastName?: string;
 
   @ApiProperty()
-  birthday?: Date;
+  birthday: Date | null;
 
   @ApiProperty()
   idCompany?: string;

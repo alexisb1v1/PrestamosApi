@@ -4,7 +4,7 @@ export class PersonAppDto {
   documentNumber: string;
   firstName: string;
   lastName: string;
-  birthday?: Date;
+  birthday: Date | null;
 }
 
 export class UserAppDto {

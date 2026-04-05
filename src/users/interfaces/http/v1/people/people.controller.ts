@@ -39,7 +39,7 @@ export class PeopleController {
     const command = new CreatePersonCommand(
       dto.documentType, dto.documentNumber,
       dto.firstName, dto.lastName,
-      dto.birthday ? new Date(dto.birthday) : undefined,
+      dto.birthday ? new Date(dto.birthday) : null,
     );
     const result = await this.commandBus.execute<CreatePersonCommand, Result<string, AppError>>(command);
     return matchResult(

@@ -231,7 +231,7 @@ export class PostgresLoanRepository implements LoanRepository {
         entity.person.documentNumber,
         entity.person.firstName,
         entity.person.lastName,
-        new Date(entity.person.birthday),
+        entity.person.birthday ? new Date(entity.person.birthday) : null,
         entity.person.id,
       );
     }

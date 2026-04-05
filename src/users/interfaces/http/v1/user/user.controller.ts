@@ -43,7 +43,7 @@ export class UserController {
   constructor(
     private readonly commandBus: CommandBus,
     private readonly queryBus: QueryBus,
-  ) {}
+  ) { }
 
   // ─── CREATE ───────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ export class UserController {
       dto.username, dto.password, dto.profile,
       dto.documentType, dto.documentNumber,
       dto.firstName, dto.lastName,
-      new Date(dto.birthday), dto.idCompany,
+      dto.birthday ? new Date(dto.birthday) : null, dto.idCompany,
     );
     const result = await this.commandBus.execute<CreateUserCommand, Result<string, AppError>>(command);
     return matchResult(
@@ -112,7 +112,7 @@ export class UserController {
       id, dto.profile, dto.status,
       dto.documentType, dto.documentNumber,
       dto.firstName, dto.lastName,
-      dto.birthday ? new Date(dto.birthday) : undefined,
+      dto.birthday ? new Date(dto.birthday) : (dto.birthday === null ? null : undefined),
     );
     const result = await this.commandBus.execute<UpdateUserCommand, Result<void, AppError>>(command);
     return matchResult(result, () => ({ success: true, message: 'Usuario actualizado correctamente' }));

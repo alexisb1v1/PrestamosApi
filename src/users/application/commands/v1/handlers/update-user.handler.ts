@@ -33,7 +33,7 @@ export class UpdateUserHandler implements ICommandHandler<UpdateUserCommand, Res
     if (command.documentNumber) person.documentNumber = command.documentNumber;
     if (command.firstName) person.firstName = command.firstName;
     if (command.lastName) person.lastName = command.lastName;
-    if (command.birthday) person.birthday = command.birthday;
+    if (command.birthday !== undefined) person.birthday = command.birthday;
 
     await this.personRepository.save(person);
     await this.userRepository.save(user);

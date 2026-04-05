@@ -4,14 +4,14 @@ export class Person {
   documentNumber: string;
   firstName: string;
   lastName: string;
-  birthday?: Date;
+  birthday: Date | null;
 
   constructor(
     documentType: string,
     documentNumber: string,
     firstName: string,
     lastName: string,
-    birthday?: Date,
+    birthday: Date | null,
     id?: string,
   ) {
     this.documentType = documentType;

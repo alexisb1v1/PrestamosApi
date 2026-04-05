@@ -4,7 +4,7 @@ export class PersonDataDto {
   documentNumber: string;
   firstName: string;
   lastName: string;
-  birthday?: Date;
+  birthday: Date | null;
 }
 
 export class UserDataDto {

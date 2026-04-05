@@ -18,5 +18,5 @@ export class PersonEntity {
   lastName: string;
 
   @Column({ type: 'date', nullable: true })
-  birthday: Date;
+  birthday: Date | null;
 }

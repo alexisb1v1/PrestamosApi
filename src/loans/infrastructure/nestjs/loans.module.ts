@@ -14,6 +14,7 @@ import { GetDashboardHandler } from '../../application/queries/v1/handlers/get-d
 import { DeleteLoanInstallmentHandler } from '../../application/commands/v1/handlers/delete-loan-installment.handler';
 import { ReassignLoanHandler } from '../../application/commands/v1/handlers/reassign-loan.handler';
 import { DeleteLoanHandler } from '../../application/commands/v1/handlers/delete-loan.handler';
+import { UpdateLoanInfoHandler } from '../../application/commands/v1/handlers/update-loan-info.handler';
 
 import { LoanRepository } from '../../domain/repositories/loan.repository';
 import { LoanInstallmentRepository } from '../../domain/repositories/loan-installment.repository';
@@ -44,6 +45,7 @@ import { RolesGuard } from '../../../users/infrastructure/security/roles.guard';
     DeleteLoanInstallmentHandler,
     ReassignLoanHandler,
     DeleteLoanHandler,
+    UpdateLoanInfoHandler,
     RolesGuard,
     {
       provide: LoanRepository,

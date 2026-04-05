@@ -16,7 +16,7 @@ export class CreateUserHandler implements ICommandHandler<CreateUserCommand, Res
     private readonly userRepository: UserRepository,
     @Inject(PersonRepository)
     private readonly personRepository: PersonRepository,
-  ) {}
+  ) { }
 
   async execute(command: CreateUserCommand): Promise<Result<string, AppError>> {
     const {

@@ -4,6 +4,6 @@ export class CreatePersonCommand {
     public readonly documentNumber: string,
     public readonly firstName: string,
     public readonly lastName: string,
-    public readonly birthday?: Date,
+    public readonly birthday: Date | null,
   ) {}
 }
