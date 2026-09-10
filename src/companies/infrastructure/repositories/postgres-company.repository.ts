@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CompanyRepository } from '../../domain/repositories/company.repository';
-import { Company } from '../../domain/entities/company.entity';
+import { CompanyRepository } from '@companies/domain/repositories/company.repository';
+import { Company } from '@companies/domain/entities/company.entity';
 import { CompanyEntity } from './entities/company.entity';
 
 @Injectable()
@@ -31,6 +31,12 @@ export class PostgresCompanyRepository implements CompanyRepository {
     return this.toDomain(entity);
   }
 
+  async findBySubdomain(subdomain: string): Promise<Company | null> {
+    const entity = await this.typeOrmRepository.findOne({ where: { subdomain } });
+    if (!entity) return null;
+    return this.toDomain(entity);
+  }
+
   async update(company: Company): Promise<void> {
     const entity = this.toEntity(company);
     await this.typeOrmRepository.save(entity);
@@ -47,6 +53,9 @@ export class PostgresCompanyRepository implements CompanyRepository {
     if (company.label) {
       entity.label = company.label;
     }
+    if (company.subdomain) {
+      entity.subdomain = company.subdomain;
+    }
     return entity;
   }
 
@@ -57,6 +66,7 @@ export class PostgresCompanyRepository implements CompanyRepository {
       new Date(entity.createdAt),
       entity.id,
       entity.label,
+      entity.subdomain,
     );
   }
 }

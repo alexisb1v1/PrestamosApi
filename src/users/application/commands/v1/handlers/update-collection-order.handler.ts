@@ -1,18 +1,33 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateCollectionOrderCommand } from '../update-collection-order.command';
 import { Inject } from '@nestjs/common';
-import { UserRepository } from '../../../../domain/repositories/user.repository';
+import { UserRepository } from '@users/domain/repositories/user.repository';
 import { Result, ok, err } from 'neverthrow';
-import { AppError } from '../../../../../common/errors/app-errors';
+import { AppError } from '@shared/errors/app-errors';
 
 @CommandHandler(UpdateCollectionOrderCommand)
-export class UpdateCollectionOrderHandler implements ICommandHandler<UpdateCollectionOrderCommand, Result<void, AppError>> {
+export class UpdateCollectionOrderHandler implements ICommandHandler<
+  UpdateCollectionOrderCommand,
+  Result<void, AppError>
+> {
   constructor(
     @Inject(UserRepository)
     private readonly userRepository: UserRepository,
   ) {}
 
-  async execute(command: UpdateCollectionOrderCommand): Promise<Result<void, AppError>> {
+  /**
+   * Actualiza el orden de cobro (secuencia de visitas) sugerido para un usuario.
+   *
+   * @param command - Datos de la solicitud:
+   *   - `userId`: ID del usuario.
+   *   - `collectionOrder`: Array con la secuencia de IDs de préstamos o personas.
+   *
+   * @returns `Result.ok(void)` si el orden fue guardado exitosamente.
+   * @returns `Result.err('NOT_FOUND')` si el usuario no existe.
+   */
+  async execute(
+    command: UpdateCollectionOrderCommand,
+  ): Promise<Result<void, AppError>> {
     const { userId, collectionOrder } = command;
 
     const user = await this.userRepository.findById(userId);

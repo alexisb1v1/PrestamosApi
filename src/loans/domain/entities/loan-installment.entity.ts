@@ -11,5 +11,5 @@ export class LoanInstallment {
     public readonly userName?: string,
     public readonly paymentType?: string,
     public readonly loan?: Loan,
-  ) { }
+  ) {}
 }

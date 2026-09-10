@@ -6,8 +6,8 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
-import { PersonEntity } from '../../../../users/infrastructure/repositories/entities/person.entity';
-import { UserEntity } from '../../../../users/infrastructure/repositories/entities/user.entity';
+import { PersonEntity } from '@users/infrastructure/repositories/entities/person.entity';
+import { UserEntity } from '@users/infrastructure/repositories/entities/user.entity';
 import { LoanInstallmentEntity } from './loan-installment.entity';
 
 @Entity('loans')

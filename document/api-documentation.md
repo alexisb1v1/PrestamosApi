@@ -4,13 +4,14 @@ Esta documentación resume los endpoints disponibles en el backend de **Prestamo
 
 ## Información General
 - **Base URL:** `http://localhost:3000` (o la URL de tu servidor)
-- **Prefijo Global:** `/api/v1` (la mayoría de los recursos)
+- **Prefijo Global:** `/api/v1`
 - **Autenticación:** JWT (Bearer Token)
+- **Semántica de Rutas:** Todos los recursos utilizan nombres en **singular** y parámetros descriptivos.
 
 ---
 
-## Formato de Error Estándar
-Todas las respuestas de error siguen esta estructura para facilitar el manejo en el frontend:
+## Formato de Error Estándar (Sistema ERROR_CODES)
+Todas las respuestas de error siguen esta estructura dinámica basada en el diccionario centralizado:
 
 ```json
 {
@@ -21,14 +22,25 @@ Todas las respuestas de error siguen esta estructura para facilitar el manejo en
 }
 ```
 
-| errorCode | Descripción | HTTP Status |
-| :--- | :--- | :--- |
-| `NOT_FOUND` | El recurso solicitado no existe | 404 |
-| `ALREADY_EXISTS` | Conflicto: el recurso ya está registrado | 400 |
-| `INVALID_INPUT` | Datos enviados no válidos o incompletos | 400 |
-| `UNAUTHORIZED` | Credenciales inválidas o sesión expirada | 401 |
-| `FORBIDDEN` | No tiene permisos suficientes (ej. empresa inactiva) | 403 |
-| `UNEXPECTED_ERROR` | Error interno del servidor | 500 |
+| errorCode | Mensaje Predeterminado | HTTP Status | Ámbito |
+| :--- | :--- | :--- | :--- |
+| `GEN_001` | Error inesperado del servidor | 500 | General |
+| `GEN_002` | Los datos ingresados son inválidos | 400 | General |
+| `GEN_003` | No autorizado | 401 | General |
+| `GEN_004` | No tiene permisos para realizar esta acción | 403 | General |
+| `GEN_005` | El recurso solicitado no fue encontrado | 404 | General |
+| `USR_001` | El usuario no existe | 404 | Usuarios |
+| `USR_002` | La ficha personal no existe | 404 | Usuarios |
+| `USR_003` | El nombre de usuario ya está en uso | 400 | Usuarios |
+| `USR_004` | La persona ya está registrada con ese documento | 400 | Usuarios |
+| `LOA_001` | El préstamo solicitado no existe | 404 | Préstamos |
+| `LOA_002` | La persona ya tiene un préstamo activo en curso | 400 | Préstamos |
+| `LOA_003` | El plazo solicitado no cumple con el mínimo requerido | 400 | Préstamos |
+| `LOA_004` | El préstamo no puede aceptar pagos en la fecha actual | 400 | Préstamos |
+| `LOA_005` | La cuota o pago no fue encontrado | 404 | Préstamos |
+| `COM_001` | La empresa solicitada no existe | 404 | Empresas |
+| `COM_002` | La empresa se encuentra inactiva o bloqueada | 403 | Empresas |
+| `EXP_001` | El gasto solicitado no existe | 404 | Gastos |
 
 ---
 
@@ -41,7 +53,8 @@ Todas las respuestas de error siguen esta estructura para facilitar el manejo en
   ```json
   {
     "username": "admin",
-    "password": "mySecurePassword"
+    "password": "mySecurePassword",
+    "fingerprint": "optional-device-id"
   }
   ```
 - **Response Success (200):**
@@ -71,31 +84,15 @@ Todas las respuestas de error siguen esta estructura para facilitar el manejo en
 
 ---
 
-## 2. Módulo de Usuarios (`/users`)
+## 2. Módulo de Usuario (`/user`)
 
 ### Listar Usuarios
-- **Path:** `GET /api/v1/users`
+- **Path:** `GET /api/v1/user`
 - **Parámetros (URL Query):** `username`?, `idCompany`?
-- **Ejemplo:** `GET /api/v1/users?idCompany=1`
-- **Response Success (200):**
-  ```json
-  [
-    {
-       "id": "1",
-       "username": "jdoe",
-       "profile": "COLLECTOR",
-       "status": "ACTIVE",
-       "isDayClosed": false,
-       "firstName": "John",
-       "lastName": "Doe",
-       "documentNumber": "77889900",
-       "idCompany": "1"
-    }
-  ]
-  ```
+- **Response Success (200):** `UserResponseDto[]`
 
 ### Crear Usuario (y Persona)
-- **Path:** `POST /api/v1/users`
+- **Path:** `POST /api/v1/user`
 - **Request Body (JSON):**
   ```json
   {
@@ -110,115 +107,93 @@ Todas las respuestas de error siguen esta estructura para facilitar el manejo en
     "idCompany": "1"
   }
   ```
+- **Response Success (201):** `{ "success": true, "userId": "123" }`
+
+### Ver Usuario por ID
+- **Path:** `GET /api/v1/user/:userId`
+- **Response Success (200):** `{ "success": true, "user": {...}, "person": {...} }`
+
+### Cambiar Estado de Cierre de Día
+- **Path:** `PATCH /api/v1/user/:userId/toggle-day-status`
+- **Request Body (JSON):** `{ "isDayClosed": true }`
+- **Response Success (200):** `{ "success": true, "message": "Estado del día actualizado correctamente" }`
+
+### Actualizar Orden de Cobro
+- **Path:** `PATCH /api/v1/user/collection-order`
+- **Request Body (JSON):** `{ "collectionOrder": [ "loan-id-1", "loan-id-2" ] }`
+
+---
+
+## 3. Módulo de Persona (`/person`)
+
+### Buscar Persona por Documento
+- **Path:** `GET /api/v1/person/search`
+- **Parámetros (URL Query):** `documentType`, `documentNumber`
+- **Example:** `GET /api/v1/person/search?documentType=DNI&documentNumber=12345678`
+
+### Crear Persona
+- **Path:** `POST /api/v1/person`
+- **Descripción:** Registra una persona física en el sistema. La **Persona** es la entidad base que almacena los datos de identidad. Una vez creada, su `id` debe ser usado para vincularla a otras entidades como:
+  - **Préstamo:** (Se envía el `idPeople` al crear un préstamo).
+  - **Usuario:** (Se asocia al crear una cuenta de acceso al sistema).
+- **Request Body (JSON):**
+  ```json
+  {
+    "documentType": "DNI",
+    "documentNumber": "77889900",
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "birthday": "1990-05-15"
+  }
+  ```
 - **Response Success (201):**
   ```json
   {
-    "success": true,
-    "message": "User and Person created successfully",
-    "userId": "123"
+    "id": "123"
   }
   ```
 
-### Cambiar Estado de Cierre de Día (Cierre de Cobrador)
-- **Path:** `PATCH /api/v1/users/:id/toggle-day-status`
-- **Request Body (JSON):**
-  ```json
-  {
-    "isDayClosed": true
-  }
-  ```
-- **Response Success (200):** `{ "success": true, "message": "Estado del día actualizado correctamente" }`
 
 ---
 
-## 3. Módulo de Personas (`/people`)
-
-### Buscar Persona por Documento
-- **Path:** `GET /api/v1/people/search`
-- **Parámetros (URL Query):** `documentType`, `documentNumber`
-- **Ejemplo:** `GET /api/v1/people/search?documentType=DNI&documentNumber=12345678`
-- **Response Success (200):**
-  ```json
-  {
-    "id": "10",
-    "documentType": "DNI",
-    "documentNumber": "12345678",
-    "firstName": "Maria",
-    "lastName": "Garcia",
-    "birthday": "1985-10-20"
-  }
-  ```
-
----
-
-## 4. Módulo de Préstamos (`/loans`)
+## 4. Módulo de Préstamo (`/loan`)
 
 ### Listar Préstamos
-- **Path:** `GET /api/v1/loans`
-- **Parámetros (URL Query):** `userId`?, `documentNumber`?, `companyId`?
-- **Response Success (200):**
-  ```json
-  [
-    {
-      "id": "500",
-      "amount": 1000,
-      "interest": 200,
-      "fee": 50,
-      "days": 24,
-      "status": "ACTIVE",
-      "address": "Calle Falsa 123",
-      "clientName": "John Doe",
-      "collectorName": "Admin",
-      "paidToday": 1,
-      "remainingAmount": 450.50,
-      "inIntervalPayment": 1,
-      "userId": "1",
-      "personId": "10"
-    }
-  ]
-  ```
+- **Path:** `GET /api/v1/loan`
+- **Parámetros (URL Query):** `userId`?, `searchQuery`?, `companyId`?, `isLiquidated` (bool)
+- **Response Success (200):** `LoanResponseDto[]`
 
 ### Crear Nuevo Préstamo
-- **Path:** `POST /api/v1/loans`
+- **Path:** `POST /api/v1/loan`
 - **Request Body (JSON):**
   ```json
   {
-    "idPeople": 10,
+    "idPeople": "10",
     "amount": 1000.50,
-    "userId": 1,
+    "userId": "1",
     "address": "Av. Principal 456, Lima",
+    "phone": "999888777",
     "days": 24
   }
   ```
-- **Response Success (201):** `{ "success": true, "loanId": "500" }`
 
 ### Ver Detalle y Abonos
-- **Path:** `GET /api/v1/loans/:id/details`
-- **Response Success (200):**
-  ```json
-  {
-    "startDate": "2024-03-01T00:00:00Z",
-    "endDate": "2024-03-25T00:00:00Z",
-    "installments": [
-      {
-        "id": "1",
-        "date": "2024-03-02T10:00:00Z",
-        "amount": 50,
-        "status": "ACTIVE",
-        "registeredBy": "Admin",
-        "registeredByUserId": "1"
-      }
-    ]
-  }
-  ```
+- **Path:** `GET /api/v1/loan/:loanId/details`
+
+### Reasignar Cobrador
+- **Path:** `PATCH /api/v1/loan/:loanId/reassign`
+- **Request Body (JSON):** `{ "newUserId": "2" }`
 
 ### Eliminar Préstamo (Lógico)
-- **Path:** `DELETE /api/v1/loans/:id`
+- **Path:** `DELETE /api/v1/loan/:loanId`
 - **Acceso:** ADMIN o OWNER
-- **Response Success (200):** `{ "success": true, "message": "Préstamo eliminado" }`
+
+---
+
+## 5. Módulo de Cuota (`/installment`)
 
 ### Registrar Abono (Pago)
-- **Path:** `POST /api/v1/loans/installments`
+- **Path:** `POST /api/v1/installment`
 - **Request Body (JSON):**
   ```json
   {
@@ -228,81 +203,51 @@ Todas las respuestas de error siguen esta estructura para facilitar el manejo en
     "paymentType": "CASH" 
   }
   ```
-- **Response Success (201):** `{ "id": "999" }`
+
+### Eliminar Abono
+- **Path:** `DELETE /api/v1/installment/:installmentId`
 
 ---
 
-## 5. Módulo de Dashboard
-
-### Obtener Estadísticas Diarias
-- **Path:** `GET /api/v1/loans/dashboard`
-- **Parámetros (URL Query):** `userId`?, `companyId`?
-- **Response Success (200):**
-  ```json
-  {
-    "totalLentToday": 1000.0,
-    "collectedToday": 450.0,
-    "activeClients": 15,
-    "totalExpensesToday": 100.0,
-    "thermometer": 85.5,
-    "userId": "1",
-    "companyId": "1",
-    "detailCollectedToday": { "yape": 200.0, "efectivo": 250.0 },
-    "pendingLoans": [ { "id": "500", "clientName": "John Doe", "remainingAmount": 450.0 } ]
-  }
-  ```
-
----
-
-## 6. Módulo de Gastos (`/expenses`)
+## 6. Módulo de Gasto (`/expense`)
 
 ### Listar Gastos
-- **Path:** `GET /api/v1/expenses`
-- **Parámetros (URL Query):** `userId`?, `startDate`?, `endDate`?
-- **Response Success (200):**
-  ```json
-  [
-    {
-      "id": "1",
-      "description": "Gasolina",
-      "amount": 20.0,
-      "date": "2024-03-01T15:00:00Z",
-      "userId": "1"
-    }
-  ]
-  ```
+- **Path:** `GET /api/v1/expense`
+- **Parámetros (URL Query):** `userId`?, `date`?
 
 ### Registrar Nuevo Gasto
-- **Path:** `POST /api/v1/expenses`
-- **Request Body (JSON):**
-  ```json
-  {
-    "description": "Reparación de motocicleta",
-    "amount": 45.0,
-    "userId": "1"
-  }
-  ```
+- **Path:** `POST /api/v1/expense`
+- **Request Body (JSON):** `{ "description": "Gasto x", "amount": 10.0, "userId": "1" }`
 
 ---
 
-## 7. Módulo de Empresas (`/companies`)
+## 7. Módulo de Dashboard
+
+### Obtener Estadísticas Diarias
+- **Path:** `GET /api/v1/dashboard`
+- **Parámetros (URL Query):** `userId`?, `companyId`?
+
+---
+
+## 8. Módulo de Empresa (`/company`)
 
 ### Listar Empresas
-- **Path:** `GET /api/v1/companies`
-- **Response Success (200):**
-  ```json
-  [
-    {
-      "id": "1",
-      "companyName": "Inversiones El Sol",
-      "status": "ACTIVE",
-      "createdAt": "2024-01-01T00:00:00Z",
-      "label": "SOL"
-    }
-  ]
-  ```
+- **Path:** `GET /api/v1/company`
+
+### Crear Empresa
+- **Path:** `POST /api/v1/company`
+- **Request Body (JSON):** `{ "companyName": "Mi Empresa" }`
+
+---
+
+## 9. Reportes (`/report`)
+
+### Reporte de Préstamos y Cobranza
+- **Path:** `GET /api/v1/report/loan`
+- **Parámetros (URL Query):** `startDate`, `endDate`, `companyId`?, `userId`?
 
 ---
 
 > [!IMPORTANT]
 > - Todos los **IDs** deben ser tratados como **strings**.
+> - Las fechas deben enviarse en formato **ISO 8601** (`YYYY-MM-DD`).

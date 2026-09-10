@@ -21,4 +21,7 @@ export class CompanyEntity {
 
   @Column({ name: 'label', type: 'character varying', nullable: true })
   label?: string;
+
+  @Column({ name: 'subdomain', type: 'character varying', nullable: true })
+  subdomain?: string;
 }

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ExpenseRepository } from '../../domain/repositories/expense.repository';
-import { Expense } from '../../domain/entities/expense.entity';
+import { ExpenseRepository } from '@expenses/domain/repositories/expense.repository';
+import { Expense } from '@expenses/domain/entities/expense.entity';
 import { ExpenseEntity } from './entities/expense.entity';
 
 @Injectable()
@@ -10,7 +10,7 @@ export class PostgresExpenseRepository implements ExpenseRepository {
   constructor(
     @InjectRepository(ExpenseEntity)
     private readonly typeOrmRepository: Repository<ExpenseEntity>,
-  ) { }
+  ) {}
 
   async save(expense: Expense): Promise<string> {
     const entity = this.toEntity(expense);

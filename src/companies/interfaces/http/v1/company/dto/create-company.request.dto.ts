@@ -11,4 +11,9 @@ export class CreateCompanyRequestDto {
   @IsString()
   @IsNotEmpty()
   label?: string;
+
+  @ApiProperty({ example: 'miempresa', description: 'Subdominio para la empresa' })
+  @IsString()
+  @IsNotEmpty()
+  subdomain: string;
 }

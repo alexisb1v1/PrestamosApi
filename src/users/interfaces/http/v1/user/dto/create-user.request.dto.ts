@@ -53,7 +53,11 @@ export class CreateUserDto {
   @MaxLength(50)
   lastName: string;
 
-  @ApiProperty({ example: '1990-01-01', description: 'Birthday', required: false })
+  @ApiProperty({
+    example: '1990-01-01',
+    description: 'Birthday',
+    required: false,
+  })
   @IsDateString()
   @IsOptional()
   birthday?: string;

@@ -1,13 +1,16 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateUserCommand } from '../update-user.command';
 import { Inject } from '@nestjs/common';
-import { UserRepository } from '../../../../domain/repositories/user.repository';
-import { PersonRepository } from '../../../../domain/repositories/person.repository';
+import { UserRepository } from '@users/domain/repositories/user.repository';
+import { PersonRepository } from '@users/domain/repositories/person.repository';
 import { Result, ok, err } from 'neverthrow';
-import { AppError } from '../../../../../common/errors/app-errors';
+import { AppError } from '@shared/errors/app-errors';
 
 @CommandHandler(UpdateUserCommand)
-export class UpdateUserHandler implements ICommandHandler<UpdateUserCommand, Result<void, AppError>> {
+export class UpdateUserHandler implements ICommandHandler<
+  UpdateUserCommand,
+  Result<void, AppError>
+> {
   constructor(
     @Inject(UserRepository)
     private readonly userRepository: UserRepository,
@@ -15,13 +18,28 @@ export class UpdateUserHandler implements ICommandHandler<UpdateUserCommand, Res
     private readonly personRepository: PersonRepository,
   ) {}
 
+  /**
+   * Actualiza la información de un usuario y sus datos personales asociados.
+   * Modifica solo los campos proporcionados en el comando.
+   *
+   * @param command - Datos a actualizar:
+   *   - `id`: ID del usuario.
+   *   - `profile`: Nuevo perfil de acceso (opcional).
+   *   - `status`: Nuevo estado (opcional).
+   *   - `firstName`, `lastName`, etc: Datos personales (opcionales).
+   *
+   * @returns `Result.ok(void)` si la actualización fue completada.
+   * @returns `Result.err('NOT_FOUND')` si el usuario o su ficha personal no existen.
+   */
   async execute(command: UpdateUserCommand): Promise<Result<void, AppError>> {
     const user = await this.userRepository.findById(command.id);
     if (!user) {
       return err('NOT_FOUND');
     }
 
-    const person = await this.personRepository.findById(user.idPeople.toString());
+    const person = await this.personRepository.findById(
+      user.idPeople.toString(),
+    );
     if (!person) {
       return err('NOT_FOUND');
     }

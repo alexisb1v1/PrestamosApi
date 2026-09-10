@@ -5,10 +5,10 @@ import {
   LoanRepository,
   DashboardStats,
 } from '../../domain/repositories/loan.repository';
-import { Loan } from '../../domain/entities/loan.entity';
-import { LoanInstallment } from '../../domain/entities/loan-installment.entity';
-import { Person } from '../../../users/domain/entities/person.entity';
-import { User } from '../../../users/domain/entities/user.entity';
+import { Loan } from '@loans/domain/entities/loan.entity';
+import { LoanInstallment } from '@loans/domain/entities/loan-installment.entity';
+import { Person } from '@users/domain/entities/person.entity';
+import { User } from '@users/domain/entities/user.entity';
 import { LoanEntity } from './entities/loan.entity';
 
 interface LoanRawResult {
@@ -43,7 +43,7 @@ export class PostgresLoanRepository implements LoanRepository {
   constructor(
     @InjectRepository(LoanEntity)
     private readonly typeOrmRepository: Repository<LoanEntity>,
-  ) { }
+  ) {}
 
   async save(loan: Loan): Promise<void> {
     const entity = this.toEntity(loan);
@@ -117,11 +117,19 @@ export class PostgresLoanRepository implements LoanRepository {
     if (userId) qb.andWhere('loan.userId = :userId', { userId });
 
     if (searchQuery) {
-      qb.andWhere(new Brackets(bq => {
-        bq.where('person.documentNumber ILIKE :term', { term: `%${searchQuery}%` })
-          .orWhere('person.firstName ILIKE :term', { term: `%${searchQuery}%` })
-          .orWhere('person.lastName ILIKE :term', { term: `%${searchQuery}%` });
-      }));
+      qb.andWhere(
+        new Brackets((bq) => {
+          bq.where('person.documentNumber ILIKE :term', {
+            term: `%${searchQuery}%`,
+          })
+            .orWhere('person.firstName ILIKE :term', {
+              term: `%${searchQuery}%`,
+            })
+            .orWhere('person.lastName ILIKE :term', {
+              term: `%${searchQuery}%`,
+            });
+        }),
+      );
     }
 
     if (companyId) qb.andWhere('"user".id_company = :companyId', { companyId });

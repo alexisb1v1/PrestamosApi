@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CompanyAppDto } from '../../../../../application/queries/v1/dto/company-app.dto';
+import { CompanyAppDto } from '@companies/application/queries/v1/dto/company-app.dto';
 
 export class CompanyResponseDto {
   @ApiProperty()
@@ -17,6 +17,9 @@ export class CompanyResponseDto {
 
   @ApiProperty({ required: false })
   label?: string;
+
+  @ApiProperty({ required: false })
+  subdomain?: string;
 
   constructor(company: CompanyAppDto) {
     this.id = company.id!;
@@ -36,5 +39,6 @@ export class CompanyResponseDto {
 
     this.createdAt = company.createdAt;
     this.label = company.label;
+    this.subdomain = company.subdomain;
   }
 }

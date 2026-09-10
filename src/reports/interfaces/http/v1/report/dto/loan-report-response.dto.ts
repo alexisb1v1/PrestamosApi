@@ -1,62 +1,62 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoanReportSummaryDto {
-    @ApiProperty()
-    totalGasto: number;
+  @ApiProperty()
+  totalGasto: number;
 
-    @ApiProperty()
-    totalCobradoEfectivo: number;
+  @ApiProperty()
+  totalCobradoEfectivo: number;
 
-    @ApiProperty()
-    totalCobradoYape: number;
+  @ApiProperty()
+  totalCobradoYape: number;
 
-    @ApiProperty()
-    totalCobrado: number;
+  @ApiProperty()
+  totalCobrado: number;
 
-    @ApiProperty()
-    totalPrestado: number;
+  @ApiProperty()
+  totalPrestado: number;
 }
 
 export class LoanReportPaymentDto {
-    @ApiProperty()
-    cliente: string;
+  @ApiProperty()
+  cliente: string;
 
-    @ApiProperty()
-    monto: number;
+  @ApiProperty()
+  monto: number;
 
-    @ApiProperty()
-    estado: string;
+  @ApiProperty()
+  estado: string;
 
-    @ApiProperty({ nullable: true })
-    metodo: string;
+  @ApiProperty({ nullable: true })
+  metodo: string;
 }
 
 export class LoanReportExpenseDto {
-    @ApiProperty()
-    descripcion: string;
+  @ApiProperty()
+  descripcion: string;
 
-    @ApiProperty()
-    monto: number;
+  @ApiProperty()
+  monto: number;
 
-    @ApiProperty()
-    usuario: string;
+  @ApiProperty()
+  usuario: string;
 }
 
 export class LoanReportDayDto {
-    @ApiProperty()
-    fecha: string;
+  @ApiProperty()
+  fecha: string;
 
-    @ApiProperty({ type: [LoanReportPaymentDto] })
-    pagos: LoanReportPaymentDto[];
+  @ApiProperty({ type: [LoanReportPaymentDto] })
+  pagos: LoanReportPaymentDto[];
 
-    @ApiProperty({ type: [LoanReportExpenseDto] })
-    gastos: LoanReportExpenseDto[];
+  @ApiProperty({ type: [LoanReportExpenseDto] })
+  gastos: LoanReportExpenseDto[];
 }
 
 export class LoanReportResponseDto {
-    @ApiProperty({ type: LoanReportSummaryDto })
-    summary: LoanReportSummaryDto;
+  @ApiProperty({ type: LoanReportSummaryDto })
+  summary: LoanReportSummaryDto;
 
-    @ApiProperty({ type: [LoanReportDayDto] })
-    pagosPorDia: LoanReportDayDto[];
+  @ApiProperty({ type: [LoanReportDayDto] })
+  pagosPorDia: LoanReportDayDto[];
 }

@@ -5,6 +5,7 @@ export class Company {
   createdAt: Date;
 
   label?: string;
+  subdomain?: string;
 
   constructor(
     companyName: string,
@@ -12,12 +13,14 @@ export class Company {
     createdAt: Date,
     id?: string,
     label?: string,
+    subdomain?: string,
   ) {
     this.id = id;
     this.companyName = companyName;
     this.status = status;
     this.createdAt = createdAt;
     this.label = label;
+    this.subdomain = subdomain;
   }
 
   getNormalizedStatus(): string {

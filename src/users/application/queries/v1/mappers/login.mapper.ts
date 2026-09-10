@@ -1,5 +1,5 @@
-import { User } from '../../../../domain/entities/user.entity';
-import { Person } from '../../../../domain/entities/person.entity';
+import { User } from '@users/domain/entities/user.entity';
+import { Person } from '@users/domain/entities/person.entity';
 import { LoginResultDto } from '../dto/login-result.dto';
 
 export class LoginMapper {

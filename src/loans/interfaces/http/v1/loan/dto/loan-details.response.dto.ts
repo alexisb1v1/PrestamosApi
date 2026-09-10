@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { LoanAppDto } from '../../../../../application/queries/v1/dto/loan-app.dto';
+import { LoanAppDto } from '@loans/application/queries/v1/dto/loan-app.dto';
 
 export class LoanInstallmentDetailDto {
   @ApiProperty()

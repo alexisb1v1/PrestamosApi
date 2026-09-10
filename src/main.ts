@@ -1,13 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
-import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { AllExceptionsFilter } from '@shared/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   process.env.TZ = 'America/Lima';
   const app = await NestFactory.create(AppModule);
+
+  // Security
+  app.use(helmet());
+
   const configService = app.get(ConfigService);
 
   // Global Validation Pipe
@@ -22,14 +28,17 @@ async function bootstrap() {
   // Global Exception Filter
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const config = new DocumentBuilder()
-    .setTitle('Prestamos API')
-    .setDescription('The Prestamos API description')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  // Swagger Configuration (Disabled in Production)
+  if (configService.get('NODE_ENV') !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Prestamos API')
+      .setDescription('The Prestamos API description')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
+  }
 
   // Enable CORS with restricted origins
   const allowedOriginsString = configService.get<string>('ALLOWED_ORIGINS');
@@ -45,8 +54,10 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
+  logger.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap().catch((err) => {
-  console.error('Error starting server', err);
+  const logger = new Logger('Bootstrap');
+  logger.error('Error starting server', err);
   process.exit(1);
 });

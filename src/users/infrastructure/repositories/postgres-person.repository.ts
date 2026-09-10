@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PersonRepository } from '../../domain/repositories/person.repository';
-import { Person } from '../../domain/entities/person.entity';
+import { PersonRepository } from '@users/domain/repositories/person.repository';
+import { Person } from '@users/domain/entities/person.entity';
 import { PersonEntity } from './entities/person.entity';
 
 @Injectable()

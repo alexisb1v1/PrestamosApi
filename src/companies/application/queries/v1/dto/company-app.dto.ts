@@ -4,4 +4,5 @@ export class CompanyAppDto {
   status: string;
   createdAt: Date;
   label?: string;
+  subdomain?: string;
 }

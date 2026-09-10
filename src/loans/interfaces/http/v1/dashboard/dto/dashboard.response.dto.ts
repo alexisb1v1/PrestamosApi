@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { LoanResponseDto } from '../../loan/dto/loan.response.dto';
-import { DashboardAppDto } from '../../../../../application/queries/v1/dto/loan-app.dto';
+import { LoanResponseDto } from '@loans/interfaces/http/v1/loan/dto/loan.response.dto';
+import { DashboardAppDto } from '@loans/application/queries/v1/dto/loan-app.dto';
 
 export class DashboardResponseDto {
   @ApiProperty({ example: 1000.0, description: 'Total prestado el día de hoy' })
@@ -35,10 +35,10 @@ export class DashboardResponseDto {
     description: 'Indicador de recuperación de capital (Termómetro)',
   })
   thermometer: number;
-  
+
   @ApiProperty({ required: false })
   userId?: string;
-  
+
   @ApiProperty({ required: false })
   companyId?: string;
 

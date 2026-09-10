@@ -4,5 +4,5 @@ export class ListLoansQuery {
     public readonly userId?: number,
     public readonly searchQuery?: string,
     public readonly companyId?: number,
-  ) { }
+  ) {}
 }

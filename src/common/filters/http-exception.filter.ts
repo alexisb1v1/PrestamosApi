@@ -4,11 +4,14 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -26,17 +29,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
 
       if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-        const resObj = exceptionResponse as Record<string, any>;
-        
+        const resObj = exceptionResponse as Record<string, unknown>;
+
         // 1. Errores formateados internamente por nosotros via matchResult ({ errorCode, message })
-        if (resObj.errorCode) {
+        if (typeof resObj.errorCode === 'string') {
           errorCode = resObj.errorCode;
-          errorMessage = resObj.message;
-        } 
+          errorMessage = (resObj.message as string) || errorMessage;
+        }
         // 2. Errores lanzados por Validadores automáticos de NestJS (class-validator)
         else if (resObj.message) {
           errorCode = status === 400 ? 'INVALID_INPUT' : 'HTTP_ERROR';
-          errorMessage = Array.isArray(resObj.message) ? resObj.message[0] : resObj.message;
+          errorMessage = Array.isArray(resObj.message)
+            ? (resObj.message[0] as string)
+            : (resObj.message as string);
         }
       } else if (typeof exceptionResponse === 'string') {
         errorCode = 'HTTP_ERROR';
@@ -45,7 +50,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else {
       // 3. Excepciones de red, base de datos o sintaxis (500)
       // Mantenemos el UNEXPECTED_ERROR encubierto pero lo registramos en logs reales del servidor
-      console.error('Unhandled System Exception:', exception);
+      this.logger.error('Unhandled System Exception:', exception);
     }
 
     // Estructura limpia y estricta definida

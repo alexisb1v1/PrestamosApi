@@ -8,18 +8,22 @@ import {
 import { CompanyAppDto } from '../dto/company-app.dto';
 import { CompanyMapper } from '../mappers/company.mapper';
 import { Result, ok } from 'neverthrow';
-import { AppError } from '../../../../../common/errors/app-errors';
+import { AppError } from '@shared/errors/app-errors';
 
 @QueryHandler(ListCompaniesQuery)
-export class ListCompaniesHandler implements IQueryHandler<ListCompaniesQuery, Result<CompanyAppDto[], AppError>> {
+export class ListCompaniesHandler implements IQueryHandler<
+  ListCompaniesQuery,
+  Result<CompanyAppDto[], AppError>
+> {
   constructor(
     @Inject(CompanyRepositoryToken)
     private readonly companyRepository: CompanyRepository,
   ) {}
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async execute(_query: ListCompaniesQuery): Promise<Result<CompanyAppDto[], AppError>> {
+  async execute(
+    _query: ListCompaniesQuery,
+  ): Promise<Result<CompanyAppDto[], AppError>> {
     const companies = await this.companyRepository.findAll();
-    return ok(companies.map(c => CompanyMapper.toAppDto(c)));
+    return ok(companies.map((c) => CompanyMapper.toAppDto(c)));
   }
 }

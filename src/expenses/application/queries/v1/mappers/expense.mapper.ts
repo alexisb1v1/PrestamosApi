@@ -1,4 +1,4 @@
-import { Expense } from '../../../../domain/entities/expense.entity';
+import { Expense } from '@expenses/domain/entities/expense.entity';
 import { ExpenseAppDto } from '../dto/expense-app.dto';
 
 export class ExpenseMapper {

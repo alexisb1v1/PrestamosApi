@@ -16,6 +16,15 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@shared/*": ["src/common/*"],
+      "@loans/*": ["src/loans/*"],
+      "@users/*": ["src/users/*"],
+      "@expenses/*": ["src/expenses/*"],
+      "@companies/*": ["src/companies/*"],
+      "@reports/*": ["src/reports/*"],
+      "@health/*": ["src/health/*"]
+    }
   }
 }

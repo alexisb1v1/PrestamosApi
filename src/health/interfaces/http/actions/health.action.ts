@@ -5,12 +5,12 @@ import {
   HttpHealthIndicator,
 } from '@nestjs/terminus';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { Public } from '../../../users/infrastructure/security/public.decorator';
+import { Public } from '@users/infrastructure/security/public.decorator';
 
 @ApiTags('Health')
 @Public()
 @Controller('health')
-export class HealthController {
+export class HealthAction {
   constructor(
     private health: HealthCheckService,
     private http: HttpHealthIndicator,
@@ -19,7 +19,7 @@ export class HealthController {
   @Get()
   @HealthCheck()
   @ApiOperation({ summary: 'Check application health' })
-  healthCheck() {
+  execute() {
     return this.health.check([
       () => this.http.pingCheck('google', 'https://google.com'),
     ]);

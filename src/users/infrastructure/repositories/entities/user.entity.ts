@@ -6,7 +6,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { PersonEntity } from './person.entity';
-import { CompanyEntity } from '../../../../companies/infrastructure/repositories/entities/company.entity';
+import { CompanyEntity } from '@companies/infrastructure/repositories/entities/company.entity';
 
 @Entity('user')
 export class UserEntity {

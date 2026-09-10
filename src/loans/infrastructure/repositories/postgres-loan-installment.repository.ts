@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { LoanInstallmentRepository } from '../../domain/repositories/loan-installment.repository';
-import { LoanInstallment } from '../../domain/entities/loan-installment.entity';
+import { LoanInstallmentRepository } from '@loans/domain/repositories/loan-installment.repository';
+import { LoanInstallment } from '@loans/domain/entities/loan-installment.entity';
+import { Loan } from '@loans/domain/entities/loan.entity';
 import { LoanInstallmentEntity } from './entities/loan-installment.entity';
 
 @Injectable()
@@ -10,7 +11,7 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
   constructor(
     @InjectRepository(LoanInstallmentEntity)
     private readonly repository: Repository<LoanInstallmentEntity>,
-  ) { }
+  ) {}
 
   async save(installment: LoanInstallment): Promise<string> {
     const entity = this.repository.create({
@@ -77,8 +78,12 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
       .leftJoinAndSelect('installment.loan', 'loan')
       .leftJoinAndSelect('loan.person', 'person')
       .leftJoinAndSelect('loan.user', 'user')
-      .where('DATE(installment.installmentDate) >= DATE(:startDate)', { startDate })
-      .andWhere('DATE(installment.installmentDate) <= DATE(:endDate)', { endDate })
+      .where('DATE(installment.installmentDate) >= DATE(:startDate)', {
+        startDate,
+      })
+      .andWhere('DATE(installment.installmentDate) <= DATE(:endDate)', {
+        endDate,
+      })
       .andWhere("installment.status = 'PAID'");
 
     if (userId) qb.andWhere('installment.userId = :userId', { userId });
@@ -86,7 +91,21 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
 
     const entities = await qb.getMany();
     return entities.map((entity) => {
-      const installment = new LoanInstallment(
+      let loanDomain: Loan | undefined;
+
+      if (entity.loan) {
+        // Asignamos una estructura parcial de Loan que cumpla lo requerido por el Handler
+        loanDomain = {
+          person: entity.loan.person
+            ? {
+                firstName: entity.loan.person.firstName,
+                lastName: entity.loan.person.lastName,
+              }
+            : undefined,
+        } as unknown as Loan;
+      }
+
+      return new LoanInstallment(
         entity.loanId,
         entity.installmentDate,
         Number(entity.amount),
@@ -95,19 +114,8 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
         entity.id,
         entity.user?.username,
         entity.paymentType,
+        loanDomain,
       );
-
-      if (entity.loan) {
-        // Asignamos una estructura parcial de Loan que cumpla lo requerido por el Handler
-        (installment as any).loan = {
-          person: entity.loan.person ? {
-            firstName: entity.loan.person.firstName,
-            lastName: entity.loan.person.lastName,
-          } : undefined
-        };
-      }
-
-      return installment;
     });
   }
 }

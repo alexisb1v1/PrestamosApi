@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ExpenseAppDto } from '../../../../../application/queries/v1/dto/expense-app.dto';
+import { ExpenseAppDto } from '@expenses/application/queries/v1/dto/expense-app.dto';
 
 export class ExpenseResponseDto {
   @ApiProperty()

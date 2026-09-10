@@ -1,5 +1,5 @@
-import { Person } from '../../../users/domain/entities/person.entity';
-import { User } from '../../../users/domain/entities/user.entity';
+import { Person } from '@users/domain/entities/person.entity';
+import { User } from '@users/domain/entities/user.entity';
 import { LoanInstallment } from './loan-installment.entity';
 
 export class Loan {

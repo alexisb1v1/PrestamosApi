@@ -1,6 +1,10 @@
-import { User } from '../../../../domain/entities/user.entity';
-import { Person } from '../../../../domain/entities/person.entity';
-import { UserAppDto, PersonAppDto, GetUserResultDto } from '../dto/user-app.dto';
+import { User } from '@users/domain/entities/user.entity';
+import { Person } from '@users/domain/entities/person.entity';
+import {
+  UserAppDto,
+  PersonAppDto,
+  GetUserResultDto,
+} from '../dto/user-app.dto';
 
 export class UserMapper {
   static toPersonAppDto(person: Person): PersonAppDto {

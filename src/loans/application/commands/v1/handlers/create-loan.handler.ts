@@ -1,30 +1,56 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateLoanCommand } from '../create-loan.command';
 import { Inject } from '@nestjs/common';
-import { LoanRepository } from '../../../../domain/repositories/loan.repository';
-import { Loan } from '../../../../domain/entities/loan.entity';
+import { LoanRepository } from '@loans/domain/repositories/loan.repository';
+import { Loan } from '@loans/domain/entities/loan.entity';
 import { Result, ok, err } from 'neverthrow';
-import { AppError } from '../../../../../common/errors/app-errors';
+import { AppError } from '@shared/errors/app-errors';
 
 @CommandHandler(CreateLoanCommand)
-export class CreateLoanHandler implements ICommandHandler<CreateLoanCommand, Result<void, AppError>> {
+export class CreateLoanHandler implements ICommandHandler<
+  CreateLoanCommand,
+  Result<void, AppError>
+> {
   constructor(
     @Inject(LoanRepository)
     private readonly loanRepository: LoanRepository,
   ) {}
 
+  /**
+   * Crea un nuevo préstamo para una persona, validando reglas de negocio
+   * como el mínimo de días (24) e intereses (20%).
+   *
+   * @param command - Datos para la creación del préstamo, incluyendo:
+   *   - `idPeople`: ID de la persona solicitante.
+   *   - `amount`: Monto base del préstamo.
+   *   - `days`: Plazo solicitado en días.
+   *   - `userId`: ID del cobrador/usuario que registra.
+   *
+   * @returns `Result.ok(void)` si se creó exitosamente.
+   * @returns `Result.err('LOAN_ALREADY_ACTIVE')` si ya existe un préstamo activo.
+   * @returns `Result.err('LOAN_INVALID_DAYS')` si los días solicitados son menores a 24.
+   */
   async execute(command: CreateLoanCommand): Promise<Result<void, AppError>> {
-    const { idPeople, amount, userId, address, phone, days: requestedDays } = command;
+    const {
+      idPeople,
+      amount,
+      userId,
+      address,
+      phone,
+      days: requestedDays,
+    } = command;
 
     // 0. Validar que no tenga préstamo activo
-    const activeLoan = await this.loanRepository.findActiveByPersonId(idPeople.toString());
+    const activeLoan = await this.loanRepository.findActiveByPersonId(
+      idPeople.toString(),
+    );
     if (activeLoan) {
-      return err('ALREADY_EXISTS');
+      return err('LOAN_ALREADY_ACTIVE');
     }
 
     // 1. Regla de negocio: mínimo 24 días
     if (requestedDays < 24) {
-      return err('INVALID_INPUT');
+      return err('LOAN_INVALID_DAYS');
     }
 
     // 2. Cálculos

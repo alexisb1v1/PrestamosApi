@@ -4,20 +4,23 @@ import { Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
-import { UserRepository } from '../../../../domain/repositories/user.repository';
-import { PersonRepository } from '../../../../domain/repositories/person.repository';
+import { UserRepository } from '@users/domain/repositories/user.repository';
+import { PersonRepository } from '@users/domain/repositories/person.repository';
 import {
   CompanyRepository,
   CompanyRepositoryToken,
-} from '../../../../../companies/domain/repositories/company.repository';
+} from '@companies/domain/repositories/company.repository';
 import { Result, ok, err } from 'neverthrow';
-import { AppError } from '../../../../../common/errors/app-errors';
+import { AppError } from '@shared/errors/app-errors';
 
 import { LoginResultDto } from '../dto/login-result.dto';
 import { LoginMapper } from '../mappers/login.mapper';
 
 @QueryHandler(LoginQuery)
-export class LoginHandler implements IQueryHandler<LoginQuery, Result<LoginResultDto, AppError>> {
+export class LoginHandler implements IQueryHandler<
+  LoginQuery,
+  Result<LoginResultDto, AppError>
+> {
   constructor(
     @Inject(UserRepository)
     private readonly userRepository: UserRepository,
@@ -26,8 +29,22 @@ export class LoginHandler implements IQueryHandler<LoginQuery, Result<LoginResul
     @Inject(CompanyRepositoryToken)
     private readonly companyRepository: CompanyRepository,
     private readonly jwtService: JwtService,
-  ) { }
+  ) {}
 
+  /**
+   * Procesa el inicio de sesión de un usuario.
+   * Valida credenciales, estado del usuario, estado de la compañía y genera un token JWT.
+   *
+   * @param query - Credenciales de acceso:
+   *   - `username`: Nombre de usuario.
+   *   - `password`: Contraseña en texto plano.
+   *   - `fingerprint`: Identificador único del dispositivo para seguridad del token.
+   *
+   * @returns `Result.ok(LoginResultDto)` con el token, datos del usuario y persona.
+   * @returns `Result.err('UNAUTHORIZED')` si las credenciales son inválidas o el usuario está inactivo.
+   * @returns `Result.err('FORBIDDEN')` si la compañía del usuario no está activa (excepto para OWNER).
+   * @returns `Result.err('NOT_FOUND')` si no se encuentra la ficha personal del usuario.
+   */
   async execute(query: LoginQuery): Promise<Result<LoginResultDto, AppError>> {
     const { username, password, fingerprint } = query;
     // 1. Find user by username
@@ -54,15 +71,16 @@ export class LoginHandler implements IQueryHandler<LoginQuery, Result<LoginResul
     }
 
     // 3. Verify password
-    let isPasswordValid: boolean;
-    isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
       return err('UNAUTHORIZED');
     }
 
     // 4. Get person data
-    const person = await this.personRepository.findById(user.idPeople.toString());
+    const person = await this.personRepository.findById(
+      user.idPeople.toString(),
+    );
     if (!person) {
       return err('NOT_FOUND');
     }

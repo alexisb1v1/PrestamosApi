@@ -1,4 +1,4 @@
-import { Company } from '../../../../domain/entities/company.entity';
+import { Company } from '@companies/domain/entities/company.entity';
 import { CompanyAppDto } from '../dto/company-app.dto';
 
 export class CompanyMapper {
@@ -9,6 +9,7 @@ export class CompanyMapper {
       status: company.status,
       createdAt: company.createdAt,
       label: company.label,
+      subdomain: company.subdomain,
     };
   }
 }
