@@ -19,7 +19,16 @@ COPY . .
 RUN npm run build
 
 # -------------------------
-# 3) Runner
+# 3) Production Dependencies
+# -------------------------
+FROM node:20-alpine AS deps_prod
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# -------------------------
+# 4) Runner
 # -------------------------
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -28,7 +37,8 @@ ENV NODE_ENV=production
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
+# Solo copiamos las dependencias de producción, ignorando ESLint, TypeScript, etc.
+COPY --from=deps_prod /app/node_modules ./node_modules
 
 EXPOSE 3000
 
