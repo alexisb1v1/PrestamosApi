@@ -46,6 +46,15 @@ export class CreateUserHandler implements ICommandHandler<
       idCompany,
     } = command;
 
+    let finalUsername = username;
+    if (profile === 'COBRADOR') {
+      finalUsername = documentNumber;
+    } else if (profile === 'ADMIN') {
+      const firstLetter = firstName.charAt(0).toLowerCase();
+      const firstLastName = lastName.split(' ')[0].toLowerCase();
+      finalUsername = `${firstLetter}${firstLastName}`;
+    }
+
     let personId: string;
 
     const existingPerson =
@@ -64,8 +73,8 @@ export class CreateUserHandler implements ICommandHandler<
     }
 
     const existingUser = idCompany
-      ? await this.userRepository.findByUsernameAndCompany(username, idCompany.toString())
-      : await this.userRepository.findByUsername(username);
+      ? await this.userRepository.findByUsernameAndCompany(finalUsername, idCompany.toString())
+      : await this.userRepository.findByUsername(finalUsername);
     if (existingUser) {
       return err('USER_ALREADY_EXISTS');
     }
@@ -73,7 +82,7 @@ export class CreateUserHandler implements ICommandHandler<
     const hashedPassword = await bcrypt.hash(passwordHash, 10);
 
     const newUser = new User(
-      username,
+      finalUsername,
       hashedPassword,
       profile,
       'ACTIVE',
