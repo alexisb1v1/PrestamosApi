@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
@@ -22,4 +22,13 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   fingerprint: string;
+
+  @ApiProperty({
+    example: 'empresa1',
+    description: 'Tenant or Subdomain',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  tenant?: string;
 }

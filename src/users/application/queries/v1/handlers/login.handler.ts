@@ -46,11 +46,27 @@ export class LoginHandler implements IQueryHandler<
    * @returns `Result.err('NOT_FOUND')` si no se encuentra la ficha personal del usuario.
    */
   async execute(query: LoginQuery): Promise<Result<LoginResultDto, AppError>> {
-    const { username, password, fingerprint } = query;
-    // 1. Find user by username
-    const user = await this.userRepository.findByUsername(username);
-    if (!user) {
-      return err('UNAUTHORIZED');
+    const { username, password, fingerprint, tenant } = query;
+    
+    let user;
+
+    if (!tenant || tenant === 'central') {
+      // 1a. Buscar usuario globalmente para el tenant central
+      user = await this.userRepository.findByUsername(username);
+      if (!user) {
+        return err('UNAUTHORIZED');
+      }
+      
+      // Validar que si accede por central, debe ser OWNER
+      if (user.profile !== 'OWNER') {
+        return err('FORBIDDEN');
+      }
+    } else {
+      // 1b. Buscar usuario cruzado con la empresa usando INNER JOIN
+      user = await this.userRepository.findByUsernameAndSubdomain(username, tenant);
+      if (!user) {
+        return err('UNAUTHORIZED');
+      }
     }
 
     if (!user.isActive()) {

@@ -63,7 +63,9 @@ export class CreateUserHandler implements ICommandHandler<
       personId = await this.personRepository.save(newPerson);
     }
 
-    const existingUser = await this.userRepository.findByUsername(username);
+    const existingUser = idCompany
+      ? await this.userRepository.findByUsernameAndCompany(username, idCompany.toString())
+      : await this.userRepository.findByUsername(username);
     if (existingUser) {
       return err('USER_ALREADY_EXISTS');
     }

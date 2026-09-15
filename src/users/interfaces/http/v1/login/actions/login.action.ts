@@ -29,7 +29,7 @@ export class LoginAction {
     const result = await this.queryBus.execute<
       LoginQuery,
       Result<LoginResultDto, AppError>
-    >(new LoginQuery(dto.username, dto.password, dto.fingerprint));
+    >(new LoginQuery(dto.username, dto.password, dto.fingerprint, dto.tenant));
     return matchResult(
       result,
       (data) =>

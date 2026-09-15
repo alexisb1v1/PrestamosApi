@@ -27,6 +27,28 @@ export class PostgresUserRepository implements UserRepository {
     return this.toDomain(entity);
   }
 
+  async findByUsernameAndSubdomain(username: string, subdomain: string): Promise<User | null> {
+    const entity = await this.typeOrmRepository.findOne({
+      where: { 
+        username,
+        company: {
+          subdomain
+        }
+      },
+      relations: ['company']
+    });
+    if (!entity) return null;
+    return this.toDomain(entity);
+  }
+
+  async findByUsernameAndCompany(username: string, idCompany: string): Promise<User | null> {
+    const entity = await this.typeOrmRepository.findOne({
+      where: { username, idCompany },
+    });
+    if (!entity) return null;
+    return this.toDomain(entity);
+  }
+
   async findById(id: string): Promise<User | null> {
     const entity = await this.typeOrmRepository.findOne({ where: { id } });
     if (!entity) return null;
