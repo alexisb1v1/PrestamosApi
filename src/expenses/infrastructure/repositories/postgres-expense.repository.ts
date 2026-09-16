@@ -24,9 +24,14 @@ export class PostgresExpenseRepository implements ExpenseRepository {
     return this.toDomain(entity);
   }
 
-  async findAll(userId?: string, date?: Date): Promise<Expense[]> {
+  async findAll(userId?: string, date?: Date, companyId?: number): Promise<Expense[]> {
     const query = this.typeOrmRepository.createQueryBuilder('expense');
     query.where("expense.status != 'ELIMINADO'"); // Logical delete filter
+
+    if (companyId) {
+      query.innerJoin('user', 'u', 'u.id = expense.user_id')
+           .andWhere('u.id_company = :companyId', { companyId });
+    }
 
     if (userId) {
       query.andWhere('expense.user_id = :userId', { userId });
@@ -45,11 +50,17 @@ export class PostgresExpenseRepository implements ExpenseRepository {
     startDate: Date,
     endDate: Date,
     userId?: string,
+    companyId?: number,
   ): Promise<Expense[]> {
     const qb = this.typeOrmRepository.createQueryBuilder('expense');
     qb.where("expense.status != 'ELIMINADO'")
       .andWhere('DATE(expense.expenseDate) >= DATE(:startDate)', { startDate })
       .andWhere('DATE(expense.expenseDate) <= DATE(:endDate)', { endDate });
+
+    if (companyId) {
+      qb.innerJoin('user', 'u', 'u.id = expense.user_id')
+        .andWhere('u.id_company = :companyId', { companyId });
+    }
 
     if (userId) {
       qb.andWhere('expense.userId = :userId', { userId });

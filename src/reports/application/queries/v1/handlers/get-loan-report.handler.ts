@@ -57,6 +57,7 @@ export class GetLoanReportHandler implements IQueryHandler<
       startDate,
       endDate,
       userId,
+      companyId,
     );
     const allActiveLoans = await this.loanRepository.findActiveInRange(
       startDate,
