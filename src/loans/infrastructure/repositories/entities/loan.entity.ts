@@ -18,6 +18,9 @@ export class LoanEntity {
   @Column({ name: 'id_people', type: 'bigint' })
   idPeople: string;
 
+  @Column({ name: 'id_company', type: 'bigint', nullable: true })
+  idCompany: string;
+
   @ManyToOne(() => PersonEntity, { createForeignKeyConstraints: false })
   @JoinColumn({ name: 'id_people' })
   person: PersonEntity;

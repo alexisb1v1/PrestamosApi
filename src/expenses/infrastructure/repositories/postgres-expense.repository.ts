@@ -10,7 +10,7 @@ export class PostgresExpenseRepository implements ExpenseRepository {
   constructor(
     @InjectRepository(ExpenseEntity)
     private readonly typeOrmRepository: Repository<ExpenseEntity>,
-  ) {}
+  ) { }
 
   async save(expense: Expense): Promise<string> {
     const entity = this.toEntity(expense);
@@ -24,13 +24,13 @@ export class PostgresExpenseRepository implements ExpenseRepository {
     return this.toDomain(entity);
   }
 
-  async findAll(userId?: string, date?: Date, companyId?: number): Promise<Expense[]> {
+  async findAll(userId?: string, date?: Date, companyId?: string): Promise<Expense[]> {
     const query = this.typeOrmRepository.createQueryBuilder('expense');
     query.where("expense.status != 'ELIMINADO'"); // Logical delete filter
 
     if (companyId) {
       query.innerJoin('user', 'u', 'u.id = expense.user_id')
-           .andWhere('u.id_company = :companyId', { companyId });
+        .andWhere('u.id_company = :companyId', { companyId });
     }
 
     if (userId) {
@@ -50,7 +50,7 @@ export class PostgresExpenseRepository implements ExpenseRepository {
     startDate: Date,
     endDate: Date,
     userId?: string,
-    companyId?: number,
+    companyId?: string,
   ): Promise<Expense[]> {
     const qb = this.typeOrmRepository.createQueryBuilder('expense');
     qb.where("expense.status != 'ELIMINADO'")

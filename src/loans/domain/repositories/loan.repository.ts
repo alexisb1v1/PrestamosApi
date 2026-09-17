@@ -26,7 +26,10 @@ export interface LoanRepository {
     searchQuery?: string,
     companyId?: number,
   ): Promise<Loan[]>;
-  findActiveByPersonId(personId: string): Promise<Loan | null>;
+  findActiveByPersonId(
+    personId: string,
+    companyId?: string,
+  ): Promise<Loan | null>;
   findWithInstallments(id: string): Promise<Loan | null>;
   getDashboardStats(
     userId?: string,

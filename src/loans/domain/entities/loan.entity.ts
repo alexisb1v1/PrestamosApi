@@ -22,6 +22,7 @@ export class Loan {
   person?: Person;
   user?: User;
   installments?: LoanInstallment[];
+  companyId?: string;
 
   constructor(
     idPeople: number,
@@ -37,6 +38,7 @@ export class Loan {
     address: string,
     phone: string,
     id?: string,
+    companyId?: string,
   ) {
     this.id = id;
     this.idPeople = idPeople;
@@ -51,6 +53,7 @@ export class Loan {
     this.status = status;
     this.address = address;
     this.phone = phone;
+    this.companyId = companyId;
   }
 
   /**

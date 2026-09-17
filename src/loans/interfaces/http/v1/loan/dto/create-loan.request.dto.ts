@@ -47,4 +47,11 @@ export class CreateLoanDto {
   @IsNumber()
   @Min(24)
   days: number;
+
+  @ApiProperty({
+    example: '1',
+    description: 'Company ID to associate with the loan',
+    required: false,
+  })
+  companyId?: string;
 }

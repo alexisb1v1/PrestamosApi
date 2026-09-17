@@ -40,6 +40,7 @@ export class CreateLoanAction {
         dto.address,
         dto.phone,
         dto.days,
+        dto.companyId,
       ),
     );
     return matchResult(result, () => undefined);

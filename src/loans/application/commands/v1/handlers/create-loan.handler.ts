@@ -43,6 +43,7 @@ export class CreateLoanHandler implements ICommandHandler<
     // 0. Validar que no tenga préstamo activo
     const activeLoan = await this.loanRepository.findActiveByPersonId(
       idPeople.toString(),
+      command.companyId,
     );
     if (activeLoan) {
       return err('LOAN_ALREADY_ACTIVE');
@@ -90,6 +91,8 @@ export class CreateLoanHandler implements ICommandHandler<
       'Activo',
       address,
       phone,
+      undefined,
+      command.companyId,
     );
 
     await this.loanRepository.save(newLoan);

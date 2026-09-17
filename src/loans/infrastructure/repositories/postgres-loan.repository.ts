@@ -156,12 +156,20 @@ export class PostgresLoanRepository implements LoanRepository {
     });
   }
 
-  async findActiveByPersonId(personId: string): Promise<Loan | null> {
+  async findActiveByPersonId(
+    personId: string,
+    companyId?: string,
+  ): Promise<Loan | null> {
+    const whereClause: any = {
+      idPeople: personId,
+      status: 'Activo',
+    };
+    if (companyId) {
+      whereClause.idCompany = companyId;
+    }
+
     const entity = await this.typeOrmRepository.findOne({
-      where: {
-        idPeople: personId,
-        status: 'Activo',
-      },
+      where: whereClause,
     });
 
     if (!entity) return null;
@@ -213,6 +221,9 @@ export class PostgresLoanRepository implements LoanRepository {
     entity.status = loan.status;
     entity.address = loan.address;
     entity.phone = loan.phone;
+    if (loan.companyId) {
+      entity.idCompany = loan.companyId;
+    }
     return entity;
   }
 
@@ -231,6 +242,7 @@ export class PostgresLoanRepository implements LoanRepository {
       entity.address,
       entity.phone,
       entity.id,
+      entity.idCompany,
     );
 
     if (entity.person) {

@@ -3,12 +3,12 @@ import { Expense } from '../entities/expense.entity';
 export interface ExpenseRepository {
   save(expense: Expense): Promise<string>;
   findById(id: string): Promise<Expense | null>;
-  findAll(userId?: string, date?: Date, companyId?: number): Promise<Expense[]>;
+  findAll(userId?: string, date?: Date, companyId?: string): Promise<Expense[]>;
   findAllInDateRange(
     startDate: Date,
     endDate: Date,
     userId?: string,
-    companyId?: number,
+    companyId?: string,
   ): Promise<Expense[]>;
 }
 
