@@ -5,4 +5,6 @@ export class FindPersonResponseDto {
   firstName: string;
   lastName: string;
   birthday: string | null;
+  phone?: string;
+  address?: string;
 }

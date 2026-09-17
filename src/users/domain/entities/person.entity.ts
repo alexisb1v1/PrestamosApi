@@ -5,6 +5,8 @@ export class Person {
   firstName: string;
   lastName: string;
   birthday: Date | null;
+  phone?: string;
+  address?: string;
 
   constructor(
     documentType: string,
@@ -13,6 +15,8 @@ export class Person {
     lastName: string,
     birthday: Date | null,
     id?: string,
+    phone?: string,
+    address?: string,
   ) {
     this.documentType = documentType;
     this.documentNumber = documentNumber;
@@ -20,5 +24,7 @@ export class Person {
     this.lastName = lastName;
     this.birthday = birthday;
     this.id = id;
+    this.phone = phone;
+    this.address = address;
   }
 }

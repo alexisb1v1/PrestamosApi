@@ -54,6 +54,8 @@ export class FindPersonAction {
         firstName: person.firstName,
         lastName: person.lastName,
         birthday: birthdayStr,
+        phone: person.phone,
+        address: person.address,
       };
     });
   }

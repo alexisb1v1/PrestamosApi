@@ -27,7 +27,23 @@ export class PostgresPersonRepository implements PersonRepository {
       documentNumber,
     });
     if (!entity) return null;
-    return this.toDomain(entity);
+
+    const latestData = await this.typeOrmRepository.manager.query(
+      `
+      SELECT 
+        (SELECT phone FROM loans WHERE id_people = $1 AND phone IS NOT NULL AND phone != '' ORDER BY created_at DESC LIMIT 1) as phone,
+        (SELECT address FROM loans WHERE id_people = $1 AND address IS NOT NULL AND address != '' ORDER BY created_at DESC LIMIT 1) as address
+      `,
+      [entity.id],
+    );
+
+    const person = this.toDomain(entity);
+    if (latestData && latestData.length > 0) {
+      if (latestData[0].phone) person.phone = latestData[0].phone;
+      if (latestData[0].address) person.address = latestData[0].address;
+    }
+
+    return person;
   }
 
   async findByDocumentNumber(documentNumber: string): Promise<Person | null> {
