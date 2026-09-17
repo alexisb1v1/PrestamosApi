@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, Min, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateLoanDto {
@@ -53,5 +53,7 @@ export class CreateLoanDto {
     description: 'Company ID to associate with the loan',
     required: false,
   })
+  @IsOptional()
+  @IsString()
   companyId?: string;
 }
