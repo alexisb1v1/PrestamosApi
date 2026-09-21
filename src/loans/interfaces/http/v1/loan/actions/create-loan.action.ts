@@ -11,6 +11,9 @@ import { CreateLoanDto } from '../dto/create-loan.request.dto';
 import { Result } from 'neverthrow';
 import { AppError } from '@shared/errors/app-errors';
 import { matchResult } from '@shared/http/match-result';
+import { LoanAppDto } from '@loans/application/queries/v1/dto/loan-app.dto';
+import { LoanMapper } from '@loans/application/queries/v1/mappers/loan.mapper';
+import { Loan } from '@loans/domain/entities/loan.entity';
 
 @ApiTags('Loan')
 @ApiBearerAuth()
@@ -28,10 +31,10 @@ export class CreateLoanAction {
     status: 400,
     description: 'Loan already exists or invalid data.',
   })
-  async execute(@Body() dto: CreateLoanDto): Promise<void> {
+  async execute(@Body() dto: CreateLoanDto): Promise<LoanAppDto> {
     const result = await this.commandBus.execute<
       CreateLoanCommand,
-      Result<void, AppError>
+      Result<Loan, AppError>
     >(
       new CreateLoanCommand(
         dto.idPeople,
@@ -43,6 +46,6 @@ export class CreateLoanAction {
         dto.companyId,
       ),
     );
-    return matchResult(result, () => undefined);
+    return matchResult(result, (loan) => LoanMapper.toLoanAppDto(loan));
   }
 }

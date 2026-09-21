@@ -45,9 +45,10 @@ export class PostgresLoanRepository implements LoanRepository {
     private readonly typeOrmRepository: Repository<LoanEntity>,
   ) {}
 
-  async save(loan: Loan): Promise<void> {
+  async save(loan: Loan): Promise<Loan> {
     const entity = this.toEntity(loan);
-    await this.typeOrmRepository.save(entity);
+    const saved = await this.typeOrmRepository.save(entity);
+    return this.toDomain(saved);
   }
 
   async updateInfo(id: string, phone: string, address: string): Promise<void> {

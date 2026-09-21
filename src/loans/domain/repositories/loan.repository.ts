@@ -16,7 +16,7 @@ export interface DashboardStats {
 }
 
 export interface LoanRepository {
-  save(loan: Loan): Promise<void>;
+  save(loan: Loan): Promise<Loan>;
   updateInfo(id: string, phone: string, address: string): Promise<void>;
   findAll(): Promise<Loan[]>;
   findById(id: string): Promise<Loan | null>;

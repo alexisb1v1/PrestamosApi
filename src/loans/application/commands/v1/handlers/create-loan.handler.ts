@@ -9,7 +9,7 @@ import { AppError } from '@shared/errors/app-errors';
 @CommandHandler(CreateLoanCommand)
 export class CreateLoanHandler implements ICommandHandler<
   CreateLoanCommand,
-  Result<void, AppError>
+  Result<Loan, AppError>
 > {
   constructor(
     @Inject(LoanRepository)
@@ -30,7 +30,7 @@ export class CreateLoanHandler implements ICommandHandler<
    * @returns `Result.err('LOAN_ALREADY_ACTIVE')` si ya existe un préstamo activo.
    * @returns `Result.err('LOAN_INVALID_DAYS')` si los días solicitados son menores a 24.
    */
-  async execute(command: CreateLoanCommand): Promise<Result<void, AppError>> {
+  async execute(command: CreateLoanCommand): Promise<Result<Loan, AppError>> {
     const {
       idPeople,
       amount,
@@ -95,7 +95,7 @@ export class CreateLoanHandler implements ICommandHandler<
       command.companyId,
     );
 
-    await this.loanRepository.save(newLoan);
-    return ok(undefined);
+    const savedLoan = await this.loanRepository.save(newLoan);
+    return ok(savedLoan);
   }
 }
