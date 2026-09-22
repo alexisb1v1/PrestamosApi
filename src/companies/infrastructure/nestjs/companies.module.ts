@@ -13,6 +13,7 @@ import { UpdateCompanyStatusHandler } from '@companies/application/commands/v1/h
 // Query Handlers
 import { ListCompaniesHandler } from '@companies/application/queries/v1/handlers/list-companies.handler';
 import { VerifyCompanyDomainHandler } from '@companies/application/queries/v1/handlers/verify-company-domain.handler';
+import { GetCompanyPublicInfoHandler } from '@companies/application/queries/v1/handlers/get-company-public-info.handler';
 
 // Actions (Granular Controllers)
 import { CreateCompanyAction } from '@companies/interfaces/http/v1/company/actions/create-company.action';
@@ -20,6 +21,7 @@ import { ListCompaniesAction } from '@companies/interfaces/http/v1/company/actio
 import { UpdateCompanyAction } from '@companies/interfaces/http/v1/company/actions/update-company.action';
 import { UpdateCompanyStatusAction } from '@companies/interfaces/http/v1/company/actions/update-company-status.action';
 import { VerifyCompanyDomainAction } from '@companies/interfaces/http/v1/company/actions/verify-company-domain.action';
+import { GetCompanyPublicInfoAction } from '@companies/interfaces/http/v1/company/actions/get-company-public-info.action';
 
 import { RedisModule } from '@shared/redis/redis.module';
 
@@ -29,7 +31,11 @@ const CommandHandlers = [
   UpdateCompanyStatusHandler,
 ];
 
-const QueryHandlers = [ListCompaniesHandler, VerifyCompanyDomainHandler];
+const QueryHandlers = [
+  ListCompaniesHandler, 
+  VerifyCompanyDomainHandler,
+  GetCompanyPublicInfoHandler,
+];
 
 const Controllers = [
   CreateCompanyAction,
@@ -37,6 +43,7 @@ const Controllers = [
   UpdateCompanyAction,
   UpdateCompanyStatusAction,
   VerifyCompanyDomainAction,
+  GetCompanyPublicInfoAction,
 ];
 
 @Module({
