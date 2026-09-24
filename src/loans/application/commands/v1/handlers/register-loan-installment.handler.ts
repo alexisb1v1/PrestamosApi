@@ -6,6 +6,7 @@ import { LoanRepository } from '@loans/domain/repositories/loan.repository';
 import { LoanInstallment } from '@loans/domain/entities/loan-installment.entity';
 import { Result, ok, err } from 'neverthrow';
 import { AppError } from '@shared/errors/app-errors';
+import { CreditScoreCronService } from '@loans/application/services/credit-score-cron.service';
 
 @CommandHandler(RegisterLoanInstallmentCommand)
 export class RegisterLoanInstallmentHandler implements ICommandHandler<
@@ -17,23 +18,9 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<
     private readonly repository: LoanInstallmentRepository,
     @Inject(LoanRepository)
     private readonly loanRepository: LoanRepository,
+    private readonly creditScoreService: CreditScoreCronService,
   ) {}
 
-  /**
-   * Registra el pago de una cuota de préstamo.
-   * Valida si el préstamo existe y si puede aceptar pagos (según lógica de dominio).
-   * Si el pago completa el monto total, marca el préstamo como 'Liquidado'.
-   *
-   * @param command - Datos del pago:
-   *   - `loanId`: ID del préstamo.
-   *   - `amount`: Monto pagado.
-   *   - `userId`: Cobrador que registra el pago.
-   *   - `paymentType`: Tipo de pago (efectivo, transferencia, etc).
-   *
-   * @returns `Result.ok(string)` con el ID del pago registrado.
-   * @returns `Result.err('NOT_FOUND')` si el préstamo no existe.
-   * @returns `Result.err('INVALID_INPUT')` si el préstamo no puede aceptar pagos hoy.
-   */
   async execute(
     command: RegisterLoanInstallmentCommand,
   ): Promise<Result<string, AppError>> {
@@ -44,7 +31,6 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<
       return err('NOT_FOUND');
     }
 
-    // Delegar la validación de negocio a la Entidad de Dominio
     if (!loan.canAcceptPayment(new Date())) {
       return err('INVALID_INPUT');
     }
@@ -62,7 +48,12 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<
 
     const installmentId = await this.repository.save(installment);
 
-    // Verificar si el préstamo quedó liquidado
+    // Efecto Sábado: Recuperación de Puntos si están pagando días atrasados
+    const recoveredDays = Math.floor(amount / loan.fee);
+    if (recoveredDays > 0) {
+      await this.creditScoreService.applySaturdayEffect(loan.idPeople, recoveredDays);
+    }
+
     const refreshedLoan =
       await this.loanRepository.findWithInstallments(loanId);
     if (refreshedLoan?.installments) {
@@ -73,6 +64,7 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<
       const totalToPay = refreshedLoan.amount + refreshedLoan.interest;
       if (totalPaid >= totalToPay) {
         refreshedLoan.status = 'Liquidado';
+        refreshedLoan.liquidationDate = new Date();
         await this.loanRepository.save(refreshedLoan);
       }
     }

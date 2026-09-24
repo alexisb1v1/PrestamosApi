@@ -7,6 +7,8 @@ export class Person {
   birthday: Date | null;
   phone?: string;
   address?: string;
+  creditScore?: number;
+  suggestedLimit?: number | null;
 
   constructor(
     documentType: string,
@@ -17,6 +19,8 @@ export class Person {
     id?: string,
     phone?: string,
     address?: string,
+    creditScore?: number,
+    suggestedLimit?: number | null,
   ) {
     this.documentType = documentType;
     this.documentNumber = documentNumber;
@@ -26,5 +30,7 @@ export class Person {
     this.id = id;
     this.phone = phone;
     this.address = address;
+    this.creditScore = creditScore ?? 100;
+    this.suggestedLimit = suggestedLimit ?? null;
   }
 }

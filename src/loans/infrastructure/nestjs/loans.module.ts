@@ -33,6 +33,8 @@ import { LoanInstallmentEntity } from '../repositories/entities/loan-installment
 import { UsersModule } from '@users/infrastructure/nestjs/users.module';
 import { RolesGuard } from '@users/infrastructure/security/roles.guard';
 
+import { CreditScoreCronService } from '@loans/application/services/credit-score-cron.service';
+
 @Module({
   imports: [
     CqrsModule,
@@ -63,6 +65,7 @@ import { RolesGuard } from '@users/infrastructure/security/roles.guard';
     DeleteLoanHandler,
     UpdateLoanInfoHandler,
     RolesGuard,
+    CreditScoreCronService,
     {
       provide: LoanRepository,
       useClass: PostgresLoanRepository,

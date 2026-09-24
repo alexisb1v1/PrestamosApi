@@ -68,6 +68,8 @@ export class PostgresPersonRepository implements PersonRepository {
     entity.firstName = person.firstName;
     entity.lastName = person.lastName;
     entity.birthday = person.birthday;
+    entity.creditScore = person.creditScore ?? 100;
+    entity.suggestedLimit = person.suggestedLimit ?? null;
     return entity;
   }
 
@@ -79,6 +81,10 @@ export class PostgresPersonRepository implements PersonRepository {
       entity.lastName,
       entity.birthday,
       entity.id,
+      undefined,
+      undefined,
+      entity.creditScore,
+      entity.suggestedLimit ? Number(entity.suggestedLimit) : null,
     );
   }
 }

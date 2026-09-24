@@ -225,6 +225,9 @@ export class PostgresLoanRepository implements LoanRepository {
     if (loan.companyId) {
       entity.idCompany = loan.companyId;
     }
+    if (loan.liquidationDate) {
+      entity.liquidationDate = loan.liquidationDate;
+    }
     return entity;
   }
 
@@ -244,6 +247,7 @@ export class PostgresLoanRepository implements LoanRepository {
       entity.phone,
       entity.id,
       entity.idCompany,
+      entity.liquidationDate ? new Date(entity.liquidationDate) : undefined,
     );
 
     if (entity.person) {

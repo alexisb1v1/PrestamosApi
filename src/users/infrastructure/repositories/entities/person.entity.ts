@@ -19,4 +19,10 @@ export class PersonEntity {
 
   @Column({ type: 'date', nullable: true })
   birthday: Date | null;
+
+  @Column({ name: 'credit_score', type: 'int', default: 100 })
+  creditScore: number;
+
+  @Column({ name: 'suggested_limit', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  suggestedLimit: number | null;
 }

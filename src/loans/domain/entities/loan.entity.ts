@@ -17,6 +17,7 @@ export class Loan {
   address: string;
   phone: string;
   paidToday?: number;
+  liquidationDate?: Date;
   remainingAmount?: number;
   inIntervalPayment?: number;
   person?: Person;
@@ -39,6 +40,7 @@ export class Loan {
     phone: string,
     id?: string,
     companyId?: string,
+    liquidationDate?: Date,
   ) {
     this.id = id;
     this.idPeople = idPeople;
@@ -54,6 +56,7 @@ export class Loan {
     this.address = address;
     this.phone = phone;
     this.companyId = companyId;
+    this.liquidationDate = liquidationDate;
   }
 
   /**
