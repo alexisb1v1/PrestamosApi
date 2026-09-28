@@ -31,6 +31,7 @@ export class LoanAppDto {
   documentNumber?: string;
   clientName?: string;
   collectorName?: string;
+  collectorDocumentNumber?: string;
   companyId?: string;
 
   installments?: InstallmentAppDto[];

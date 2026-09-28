@@ -25,7 +25,10 @@ export class LoanMapper {
       clientName: loan.person
         ? `${loan.person.firstName} ${loan.person.lastName}`
         : undefined,
-      collectorName: loan.user?.username,
+      collectorDocumentNumber: loan.user?.person?.documentNumber,
+      collectorName: loan.user?.person 
+        ? `${loan.user.person.firstName} ${loan.user.person.lastName}`
+        : loan.user?.username,
       companyId: loan.user?.idCompany,
       installments: loan.installments?.map((inst) => ({
         id: inst.id || '',

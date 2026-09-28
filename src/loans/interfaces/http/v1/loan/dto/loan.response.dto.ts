@@ -44,6 +44,9 @@ export class LoanResponseDto {
   @ApiProperty({ required: false })
   collectorName?: string;
 
+  @ApiProperty({ required: false })
+  collectorDocumentNumber?: string;
+
   @ApiProperty({
     example: 1,
     description: 'Indicador si ya se realizó el pago hoy (1: Si, 0: No)',
@@ -92,6 +95,7 @@ export class LoanResponseDto {
     this.documentNumber = loan.documentNumber;
     this.clientName = loan.clientName;
     this.collectorName = loan.collectorName;
+    this.collectorDocumentNumber = loan.collectorDocumentNumber;
     this.companyId = loan.companyId;
   }
 }

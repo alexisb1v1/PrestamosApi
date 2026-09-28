@@ -91,6 +91,7 @@ export class PostgresLoanRepository implements LoanRepository {
       .createQueryBuilder('loan')
       .leftJoinAndSelect('loan.person', 'person')
       .leftJoinAndSelect('loan.user', 'user')
+      .leftJoinAndSelect('user.person', 'userPerson')
       .leftJoin('loan.installments', 'installment')
       .addSelect('COALESCE(SUM(installment.amount), 0)', 'installmentsSum')
       .addSelect(
@@ -113,7 +114,8 @@ export class PostgresLoanRepository implements LoanRepository {
       )
       .groupBy('loan.id')
       .addGroupBy('person.id')
-      .addGroupBy('"user".id');
+      .addGroupBy('"user".id')
+      .addGroupBy('userPerson.id');
 
     if (userId) qb.andWhere('loan.userId = :userId', { userId });
 
@@ -273,6 +275,16 @@ export class PostgresLoanRepository implements LoanRepository {
         entity.user.isDayClosed,
         entity.user.idCompany,
       );
+      if (entity.user.person) {
+        loan.user.person = new Person(
+          entity.user.person.documentType,
+          entity.user.person.documentNumber,
+          entity.user.person.firstName,
+          entity.user.person.lastName,
+          entity.user.person.birthday ? new Date(entity.user.person.birthday) : null,
+          entity.user.person.id,
+        );
+      }
     }
 
     return loan;
@@ -326,6 +338,7 @@ export class PostgresLoanRepository implements LoanRepository {
       .createQueryBuilder('loan')
       .leftJoinAndSelect('loan.person', 'person')
       .leftJoinAndSelect('loan.user', 'user')
+      .leftJoinAndSelect('user.person', 'userPerson')
       .leftJoin('loan.installments', 'allInstallments')
       .leftJoin(
         'loan.installments',
@@ -342,7 +355,8 @@ export class PostgresLoanRepository implements LoanRepository {
       .addSelect('COALESCE(SUM(allInstallments.amount), 0)', 'installmentsSum')
       .groupBy('loan.id')
       .addGroupBy('person.id')
-      .addGroupBy('"user".id');
+      .addGroupBy('"user".id')
+      .addGroupBy('userPerson.id');
 
     if (userId) {
       pendingQb.andWhere('loan.userId = :userId', { userId });
