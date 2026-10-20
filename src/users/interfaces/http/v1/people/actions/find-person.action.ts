@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -34,6 +34,10 @@ export class FindPersonAction {
     @Query('documentType') documentType: string,
     @Query('documentNumber') documentNumber: string,
   ): Promise<FindPersonResponseDto> {
+    if ((documentType === 'DNI' || documentType === '1') && !/^\d{8}$/.test(documentNumber)) {
+      throw new BadRequestException('El DNI debe tener exactamente 8 dígitos numéricos.');
+    }
+
     const result = await this.queryBus.execute<
       FindPersonQuery,
       Result<Person, AppError>

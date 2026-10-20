@@ -49,25 +49,43 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         - 8-14 days late: -4 pts
       */
       
-      // We calculate late days as days_since_start - paid_days
+      // Cálculo optimizado en base de datos:
+      // 1. Agrupación de abonos reales en loan_installments
+      // 2. Cálculo matemático de días hábiles transcurridos (excluyendo domingos en O(1))
+      // 3. Determinación de mora y penalización sin locks innecesarios
       await queryRunner.query(`
-        WITH late_loans AS (
+        WITH paid_summary AS (
+          SELECT 
+            loan_id, 
+            COALESCE(SUM(amount), 0) AS total_paid
+          FROM loan_installments
+          WHERE status IN ('PAID', 'ACTIVE')
+          GROUP BY loan_id
+        ),
+        late_loans AS (
           SELECT 
             l.id_people,
-            l.id as loan_id,
+            l.id AS loan_id,
             l.fee,
-            l.status,
-            COALESCE((SELECT SUM(amount) FROM payments p WHERE p.loan_id = l.id), 0) as total_paid,
-            DATE_PART('day', NOW() - l.start_date) as days_since_start
+            COALESCE(ps.total_paid, 0) AS total_paid,
+            -- Días hábiles = días calendario - domingos (fórmula aritmética de CPU)
+            GREATEST(
+              0,
+              (CURRENT_DATE - l.start_date::date) 
+              - FLOOR(((CURRENT_DATE - l.start_date::date) + EXTRACT(DOW FROM l.start_date::date)) / 7)::int
+            ) AS workdays_due
           FROM loans l
-          WHERE l.status = 'Pendiente' AND l.fee > 0
+          LEFT JOIN paid_summary ps ON ps.loan_id = l.id
+          WHERE l.status = 'Activo' 
+            AND l.fee > 0 
+            AND l.start_date <= CURRENT_DATE
         ),
         calculated_mora AS (
           SELECT 
             id_people,
-            FLOOR(days_since_start - (total_paid / fee)) as late_days
+            FLOOR(workdays_due - (total_paid / fee)) AS late_days
           FROM late_loans
-          WHERE FLOOR(days_since_start - (total_paid / fee)) >= 1
+          WHERE FLOOR(workdays_due - (total_paid / fee)) >= 1
         ),
         penalties AS (
           SELECT 
@@ -79,14 +97,16 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
                 WHEN late_days >= 8 THEN 4
                 ELSE 0
               END
-            ) as total_penalty
+            ) AS total_penalty
           FROM calculated_mora
           GROUP BY id_people
         )
         UPDATE people p
         SET credit_score = GREATEST(0, p.credit_score - pen.total_penalty)
         FROM penalties pen
-        WHERE p.id = pen.id_people;
+        WHERE p.id = pen.id_people
+          AND pen.total_penalty > 0
+          AND p.credit_score > 0;
       `);
 
       await queryRunner.commitTransaction();

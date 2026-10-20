@@ -12,6 +12,7 @@ import { ListUsersHandler } from '@users/application/queries/v1/handlers/list-us
 import { FindPersonHandler } from '@users/application/queries/v1/handlers/find-person.handler';
 import { ToggleDayStatusHandler } from '@users/application/commands/v1/handlers/toggle-day-status.handler';
 import { UpdateCollectionOrderHandler } from '@users/application/commands/v1/handlers/update-collection-order.handler';
+import { DniLookupService } from '@users/application/services/dni-lookup.service';
 import { UserRepository } from '@users/domain/repositories/user.repository';
 import { PersonRepository } from '@users/domain/repositories/person.repository';
 import { PostgresUserRepository } from '../repositories/postgres-user.repository';
@@ -82,6 +83,7 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    DniLookupService,
   ],
   exports: [UserRepository, PersonRepository],
 })
