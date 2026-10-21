@@ -12,6 +12,8 @@ import { ListUsersHandler } from '@users/application/queries/v1/handlers/list-us
 import { FindPersonHandler } from '@users/application/queries/v1/handlers/find-person.handler';
 import { ToggleDayStatusHandler } from '@users/application/commands/v1/handlers/toggle-day-status.handler';
 import { UpdateCollectionOrderHandler } from '@users/application/commands/v1/handlers/update-collection-order.handler';
+import { ResetUserPasswordHandler } from '@users/application/commands/v1/handlers/reset-user-password.handler';
+import { ChangePasswordHandler } from '@users/application/commands/v1/handlers/change-password.handler';
 import { DniLookupService } from '@users/application/services/dni-lookup.service';
 import { UserRepository } from '@users/domain/repositories/user.repository';
 import { PersonRepository } from '@users/domain/repositories/person.repository';
@@ -22,6 +24,8 @@ import { PersonEntity } from '../repositories/entities/person.entity';
 import { CreateUserAction } from '@users/interfaces/http/v1/user/actions/create-user.action';
 import { ListUsersAction } from '@users/interfaces/http/v1/user/actions/list-users.action';
 import { GetUserAction } from '@users/interfaces/http/v1/user/actions/get-user.action';
+import { ChangePasswordAction } from '@users/interfaces/http/v1/user/actions/change-password.action';
+import { ResetPasswordAction } from '@users/interfaces/http/v1/user/actions/reset-password.action';
 import { UpdateUserAction } from '@users/interfaces/http/v1/user/actions/update-user.action';
 import { DeleteUserAction } from '@users/interfaces/http/v1/user/actions/delete-user.action';
 import { ToggleDayStatusAction } from '@users/interfaces/http/v1/user/actions/toggle-day-status.action';
@@ -52,6 +56,8 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
     LoginAction,
     CreateUserAction,
     ListUsersAction,
+    ChangePasswordAction,
+    ResetPasswordAction,
     GetUserAction,
     UpdateUserAction,
     DeleteUserAction,
@@ -65,6 +71,8 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
     CreatePersonHandler,
     UpdateUserHandler,
     DeleteUserHandler,
+    ResetUserPasswordHandler,
+    ChangePasswordHandler,
     LoginHandler,
     GetUserHandler,
     ListUsersHandler,

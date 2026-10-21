@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { RequestWithUser } from '@shared/interfaces/request-with-user.interface';
 import { CommandBus } from '@nestjs/cqrs';
@@ -34,12 +35,16 @@ export class DeleteInstallmentAction {
     status: 204,
     description: 'Installment deleted successfully.',
   })
+  @ApiResponse({ status: 400, description: 'Invalid installment ID.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 404, description: 'Installment not found.' })
   async execute(
     @Param('installmentId') installmentId: string,
     @Req() req: RequestWithUser,
   ): Promise<void> {
+    if (!/^\d+$/.test(installmentId)) {
+      throw new BadRequestException('El ID del pago debe ser un número entero válido.');
+    }
     const userId = req.user.sub;
     const result = await this.commandBus.execute<
       DeleteLoanInstallmentCommand,

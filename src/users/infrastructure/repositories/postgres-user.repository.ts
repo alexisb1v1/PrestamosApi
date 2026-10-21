@@ -50,7 +50,10 @@ export class PostgresUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    const entity = await this.typeOrmRepository.findOne({ where: { id } });
+    const entity = await this.typeOrmRepository.findOne({
+      where: { id },
+      relations: ['person'],
+    });
     if (!entity) return null;
     return this.toDomain(entity);
   }

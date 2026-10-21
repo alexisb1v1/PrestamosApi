@@ -53,6 +53,16 @@ export const ERROR_CODES = {
     errorCode: 'USR_004',
     message: 'La persona ya está registrada con ese documento',
   },
+  INVALID_CURRENT_PASSWORD: {
+    statusCode: 400,
+    errorCode: 'USR_005',
+    message: 'La contraseña actual no es correcta',
+  },
+  PERSON_DOCUMENT_NOT_FOUND: {
+    statusCode: 400,
+    errorCode: 'USR_006',
+    message: 'No se encontró el documento de identidad de la persona asociada',
+  },
 
   // --- PRÉSTAMOS (LOA) ---
   LOAN_NOT_FOUND: {

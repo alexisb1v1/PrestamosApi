@@ -54,6 +54,7 @@ export class DeleteLoanInstallmentHandler implements ICommandHandler<
       const totalToPay = refreshedLoan.amount + refreshedLoan.interest;
       if (totalPaid < totalToPay) {
         refreshedLoan.status = 'Activo';
+        refreshedLoan.liquidationDate = undefined;
         await this.loanRepository.save(refreshedLoan);
       }
     }

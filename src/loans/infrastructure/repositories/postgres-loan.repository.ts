@@ -227,9 +227,7 @@ export class PostgresLoanRepository implements LoanRepository {
     if (loan.companyId) {
       entity.idCompany = loan.companyId;
     }
-    if (loan.liquidationDate) {
-      entity.liquidationDate = loan.liquidationDate;
-    }
+    entity.liquidationDate = loan.liquidationDate ?? null;
     return entity;
   }
 

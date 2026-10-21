@@ -32,7 +32,7 @@ export class LoanEntity {
   endDate: string | Date;
 
   @Column({ name: 'liquidation_date', type: 'timestamp', nullable: true })
-  liquidationDate: string | Date;
+  liquidationDate: string | Date | null;
 
   @Column('numeric', { precision: 12, scale: 2 })
   amount: number;
