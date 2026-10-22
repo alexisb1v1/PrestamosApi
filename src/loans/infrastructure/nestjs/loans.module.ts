@@ -31,6 +31,7 @@ import { PostgresLoanInstallmentRepository } from '../repositories/postgres-loan
 import { LoanEntity } from '../repositories/entities/loan.entity';
 import { LoanInstallmentEntity } from '../repositories/entities/loan-installment.entity';
 import { UsersModule } from '@users/infrastructure/nestjs/users.module';
+import { CompaniesModule } from '@companies/infrastructure/nestjs/companies.module';
 import { RolesGuard } from '@users/infrastructure/security/roles.guard';
 
 import { CreditScoreCronService } from '@loans/application/services/credit-score-cron.service';
@@ -40,6 +41,7 @@ import { CreditScoreCronService } from '@loans/application/services/credit-score
     CqrsModule,
     TypeOrmModule.forFeature([LoanEntity, LoanInstallmentEntity]),
     UsersModule,
+    CompaniesModule,
   ],
   controllers: [
     CreateLoanAction,

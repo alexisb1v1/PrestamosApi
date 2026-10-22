@@ -10,16 +10,32 @@ function getSecretKey(): Buffer {
   return crypto.createHash('sha256').update(secret).digest();
 }
 
+export interface DecryptedLoanToken {
+  loanId: string;
+  expiresAt: number | null;
+  isExpired: boolean;
+}
+
 /**
- * Cifra un ID de préstamo usando AES-256-GCM.
+ * Cifra un ID de préstamo junto con su fecha de expiración usando AES-256-GCM.
+ * Formato del payload: `${loanId}:${expTimestamp}`
  * Devuelve un token seguro codificado en Base64URL.
  */
-export function encryptLoanId(loanId: string): string {
+export function encryptLoanId(loanId: string, expiresAt?: number | Date): string {
   const key = getSecretKey();
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
   
-  let encrypted = cipher.update(loanId, 'utf8', 'base64');
+  const expTimestamp =
+    expiresAt instanceof Date
+      ? expiresAt.getTime()
+      : typeof expiresAt === 'number'
+        ? expiresAt
+        : Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 días por defecto si no se especifica
+
+  const payload = `${loanId}:${expTimestamp}`;
+  
+  let encrypted = cipher.update(payload, 'utf8', 'base64');
   encrypted += cipher.final('base64');
   
   const authTag = cipher.getAuthTag();
@@ -33,9 +49,10 @@ export function encryptLoanId(loanId: string): string {
 
 /**
  * Descifra un token de préstamo.
- * Retorna el ID de préstamo si la verificación es exitosa, o null si el token es inválido o manipulado.
+ * Retorna DecryptedLoanToken { loanId, expiresAt, isExpired } si la verificación es exitosa,
+ * o null si el token es inválido o fue manipulado.
  */
-export function decryptLoanId(token: string): string | null {
+export function decryptLoanId(token: string): DecryptedLoanToken | null {
   try {
     // Decodificar Base64URL a utf8
     const rawToken = Buffer.from(token, 'base64url').toString('utf8');
@@ -58,7 +75,26 @@ export function decryptLoanId(token: string): string | null {
     let decrypted = decipher.update(cipherText, undefined, 'utf8');
     decrypted += decipher.final('utf8');
     
-    return decrypted;
+    // Soporte para formato `loanId:expiresAt` y retrocompatibilidad con solo `loanId`
+    if (decrypted.includes(':')) {
+      const separatorIndex = decrypted.indexOf(':');
+      const loanId = decrypted.substring(0, separatorIndex);
+      const expStr = decrypted.substring(separatorIndex + 1);
+      const expNumber = Number(expStr);
+      const isExpired = !isNaN(expNumber) && Date.now() > expNumber;
+
+      return {
+        loanId,
+        expiresAt: isNaN(expNumber) ? null : expNumber,
+        isExpired,
+      };
+    }
+
+    return {
+      loanId: decrypted,
+      expiresAt: null,
+      isExpired: false,
+    };
   } catch (error) {
     // Captura fallos de descifrado o manipulación de datos (ej: Bad Decrypt / Auth Tag fail)
     return null;

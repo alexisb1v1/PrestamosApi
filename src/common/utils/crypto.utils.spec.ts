@@ -10,7 +10,20 @@ describe('CryptoUtils', () => {
     expect(token.length).toBeGreaterThan(0);
 
     const decrypted = decryptLoanId(token);
-    expect(decrypted).toBe(testLoanId);
+    expect(decrypted).not.toBeNull();
+    expect(decrypted?.loanId).toBe(testLoanId);
+    expect(decrypted?.isExpired).toBe(false);
+  });
+
+  it('should detect an expired token', () => {
+    // Expirado hace 1 hora
+    const pastDate = Date.now() - 3600 * 1000;
+    const token = encryptLoanId(testLoanId, pastDate);
+
+    const decrypted = decryptLoanId(token);
+    expect(decrypted).not.toBeNull();
+    expect(decrypted?.loanId).toBe(testLoanId);
+    expect(decrypted?.isExpired).toBe(true);
   });
 
   it('should return null for an invalid token', () => {

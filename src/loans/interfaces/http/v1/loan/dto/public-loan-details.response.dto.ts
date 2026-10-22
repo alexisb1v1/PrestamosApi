@@ -19,6 +19,15 @@ export class PublicLoanDetailsResponseDto {
   @ApiProperty()
   clientName: string;
 
+  @ApiProperty({ required: false })
+  tenantName: string;
+
+  @ApiProperty()
+  isExpired: boolean;
+
+  @ApiProperty()
+  isLiquidated: boolean;
+
   @ApiProperty()
   amount: number;
 
@@ -46,8 +55,15 @@ export class PublicLoanDetailsResponseDto {
   @ApiProperty({ type: [PublicLoanInstallmentDetailDto] })
   installments: PublicLoanInstallmentDetailDto[];
 
-  constructor(loan: LoanAppDto) {
+  constructor(
+    loan: LoanAppDto,
+    meta?: { tenantName?: string; isExpired?: boolean },
+  ) {
     this.clientName = loan.clientName || 'Cliente';
+    this.tenantName = meta?.tenantName || 'NeoCobros';
+    this.isExpired = meta?.isExpired ?? false;
+    this.isLiquidated =
+      loan.status === 'Liquidado' || (loan.remainingAmount || 0) <= 0;
     this.amount = loan.amount;
     this.interest = loan.interest || 0;
     this.fee = loan.fee;
