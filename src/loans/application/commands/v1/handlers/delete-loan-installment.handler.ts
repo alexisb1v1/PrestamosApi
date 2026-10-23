@@ -5,6 +5,7 @@ import { LoanInstallmentRepository } from '@loans/domain/repositories/loan-insta
 import { LoanRepository } from '@loans/domain/repositories/loan.repository';
 import { Result, ok, err } from 'neverthrow';
 import { AppError } from '@shared/errors/app-errors';
+import { CreditScoreCronService } from '@loans/application/services/credit-score-cron.service';
 
 @CommandHandler(DeleteLoanInstallmentCommand)
 export class DeleteLoanInstallmentHandler implements ICommandHandler<
@@ -16,6 +17,7 @@ export class DeleteLoanInstallmentHandler implements ICommandHandler<
     private readonly repository: LoanInstallmentRepository,
     @Inject(LoanRepository)
     private readonly loanRepository: LoanRepository,
+    private readonly creditScoreService: CreditScoreCronService,
   ) {}
 
   /**
@@ -55,10 +57,24 @@ export class DeleteLoanInstallmentHandler implements ICommandHandler<
       if (totalPaid < totalToPay) {
         refreshedLoan.status = 'Activo';
         refreshedLoan.liquidationDate = undefined;
+        refreshedLoan.completedOnTime = false;
+        refreshedLoan.earlyLiquidationDays = 0;
+        refreshedLoan.extensionDays = 0;
+        refreshedLoan.delayDays = 0;
+        refreshedLoan.creditRating = null;
         await this.loanRepository.save(refreshedLoan);
+      }
+    }
+
+    if (refreshedLoan) {
+      try {
+        await this.creditScoreService.calculateAndSavePersonScore(refreshedLoan.idPeople);
+      } catch (err) {
+        // No bloquea la respuesta si el recálculo analítico falla
       }
     }
 
     return ok(undefined);
   }
 }
+

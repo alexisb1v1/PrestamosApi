@@ -25,4 +25,8 @@ export class PersonEntity {
 
   @Column({ name: 'suggested_limit', type: 'decimal', precision: 10, scale: 2, nullable: true })
   suggestedLimit: number | null;
+
+  @Column({ name: 'credit_score_detail', type: 'jsonb', nullable: true })
+  creditScoreDetail: Record<string, any> | null;
 }
+

@@ -24,6 +24,11 @@ export class Loan {
   user?: User;
   installments?: LoanInstallment[];
   companyId?: string;
+  completedOnTime?: boolean;
+  earlyLiquidationDays?: number;
+  extensionDays?: number;
+  delayDays?: number;
+  creditRating?: string | null;
 
   constructor(
     idPeople: number,

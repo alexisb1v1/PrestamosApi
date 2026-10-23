@@ -7,4 +7,8 @@ export class FindPersonResponseDto {
   birthday: string | null;
   phone?: string;
   address?: string;
+  creditScore?: number;
+  suggestedLimit?: number | null;
+  creditScoreDetail?: Record<string, any> | null;
 }
+

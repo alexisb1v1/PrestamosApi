@@ -4,7 +4,9 @@ import {
   Param,
   NotFoundException,
   Inject,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { QueryBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -46,6 +48,7 @@ export class GenerateShareLinkAction {
   @ApiResponse({ status: 404, description: 'Loan not found.' })
   async execute(
     @Param('loanId') loanId: string,
+    @Req() req: Request,
   ): Promise<{ shareUrl: string; expiresAt: number; token: string }> {
     const result = await this.queryBus.execute<
       GetLoanDetailsQuery,
@@ -67,9 +70,11 @@ export class GenerateShareLinkAction {
 
     const token = encryptLoanId(loanId, expiresAt);
 
-    // Obtener el subdominio dinámico del tenant desde la BD
-    let subdomain = '';
-    if (loan.companyId) {
+    // 1. Obtener el subdominio en memoria desde las cabeceras HTTP (X-Tenant-Subdomain, Origin o Referer)
+    let subdomain = this.extractSubdomainFromHeaders(req);
+
+    // 2. Fallback a BD solo si no viene en las cabeceras HTTP
+    if (!subdomain && loan.companyId) {
       try {
         const company = await this.companyRepository.findById(loan.companyId);
         if (company?.subdomain) {
@@ -98,5 +103,45 @@ export class GenerateShareLinkAction {
     }
 
     return { shareUrl, expiresAt, token };
+  }
+
+  /**
+   * Extrae el subdominio del tenant en memoria a partir de los encabezados de la petición HTTP.
+   */
+  private extractSubdomainFromHeaders(req: Request): string | null {
+    // 1. Cabecera explícita X-Tenant-Subdomain enviada por la PWA
+    const customHeader = req.headers['x-tenant-subdomain'];
+    if (typeof customHeader === 'string' && customHeader.trim()) {
+      return customHeader.trim();
+    }
+
+    // 2. Extraer desde Origin o Referer
+    const originOrReferer = (req.headers['origin'] || req.headers['referer']) as
+      | string
+      | undefined;
+    if (originOrReferer) {
+      try {
+        const url = new URL(originOrReferer);
+        const hostname = url.hostname;
+        const parts = hostname.split('.');
+
+        // Caso local: "empresa.localhost"
+        if (hostname.endsWith('.localhost') && parts.length >= 2) {
+          return parts[0];
+        }
+
+        // Caso producción / SaaS: "empresa.neocobros.com"
+        if (
+          parts.length >= 3 &&
+          parts[0] !== 'www' &&
+          parts[0] !== 'api' &&
+          parts[0] !== 'central'
+        ) {
+          return parts[0];
+        }
+      } catch {}
+    }
+
+    return null;
   }
 }

@@ -65,6 +65,22 @@ export class LoanEntity {
   @Column({ length: 20, nullable: false, default: '' })
   phone: string;
 
+  @Column({ name: 'completed_on_time', type: 'boolean', default: false })
+  completedOnTime: boolean;
+
+  @Column({ name: 'early_liquidation_days', type: 'int', default: 0 })
+  earlyLiquidationDays: number;
+
+  @Column({ name: 'extension_days', type: 'int', default: 0 })
+  extensionDays: number;
+
+  @Column({ name: 'delay_days', type: 'int', default: 0 })
+  delayDays: number;
+
+  @Column({ name: 'credit_rating', type: 'varchar', length: 5, nullable: true })
+  creditRating: string | null;
+
   @OneToMany(() => LoanInstallmentEntity, (installment) => installment.loan)
   installments: LoanInstallmentEntity[];
 }
+

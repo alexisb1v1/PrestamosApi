@@ -38,6 +38,7 @@
 - **Helmet** — headers HTTP seguros
 - **Throttler** — rate limiting por IP
 - **CORS** configurado por entorno
+- **Criptografía de Enlaces Públicos** — Cifrado autenticado **AES-256-GCM** para tokens opacos temporales con expiración (`loanId:expiresAt`) y resolución de subdominio multi-tenant en memoria vía cabeceras HTTP (`X-Tenant-Subdomain`, `Origin`, `Referer`), garantizando 0 impacto a PostgreSQL.
 
 ### Documentación
 - **Swagger UI** con `@nestjs/swagger`

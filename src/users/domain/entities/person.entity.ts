@@ -9,6 +9,7 @@ export class Person {
   address?: string;
   creditScore?: number;
   suggestedLimit?: number | null;
+  creditScoreDetail?: Record<string, any> | null;
 
   constructor(
     documentType: string,
@@ -21,6 +22,7 @@ export class Person {
     address?: string,
     creditScore?: number,
     suggestedLimit?: number | null,
+    creditScoreDetail?: Record<string, any> | null,
   ) {
     this.documentType = documentType;
     this.documentNumber = documentNumber;
@@ -32,5 +34,6 @@ export class Person {
     this.address = address;
     this.creditScore = creditScore ?? 100;
     this.suggestedLimit = suggestedLimit ?? null;
+    this.creditScoreDetail = creditScoreDetail ?? null;
   }
 }

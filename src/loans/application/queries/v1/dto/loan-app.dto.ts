@@ -24,6 +24,12 @@ export class LoanAppDto {
   paidToday: number;
   remainingAmount: number;
   inIntervalPayment: number;
+  liquidationDate?: Date;
+  completedOnTime?: boolean;
+  earlyLiquidationDays?: number;
+  extensionDays?: number;
+  delayDays?: number;
+  creditRating?: string | null;
 
   // Datos externos desnormalizados
   idPeople: string;

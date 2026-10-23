@@ -18,10 +18,12 @@ El sistema ordena automáticamente la lista de clientes pendientes en una secuen
 - Reduce drásticamente los gastos de transporte y combustible.
 - Incluye un buscador rápido por nombre o DNI.
 
-### 2. Fichas de Préstamo Digitales (Sin Impresión)
+### 2. Fichas de Préstamo Digitales y Enlace Web Compartible
 Elimina la necesidad de imprimir fichas de cartón frágiles y costosas.
-- Generación de calendario de cuotas e historial de pagos de manera digital.
-- Historial transparente y ecológico.
+- **Calendario Digital Lunes a Sábado:** Generación de calendario de cuotas e historial de pagos en tiempo real. Excluye automáticamente los domingos (días no laborables de cobranza), protegiendo al prestatario de penalizaciones injustas.
+- **Enlace Web Seguro:** Permite al cobrador generar y copiar un enlace público cifrado (AES-256-GCM con vencimiento automático) para compartirlo por WhatsApp u otros medios.
+- **Resolución Multi-Tenant:** La URL se adapta dinámicamente al subdominio del cliente SaaS (`https://empresa.neocobros.com/compartir/{token}`).
+- **Pantalla de Agradecimiento Institucional:** Al vencer o liquidar el préstamo, muestra un mensaje formal de agradecimiento en nombre del tenant con el pie de marca *Potenciado por NeoCobros*.
 
 ### 3. Registro de Gastos Operativos
 Permite a los cobradores declarar al instante cualquier egreso de caja realizado durante el día desde la calle (ej. combustible, almuerzos, reparaciones).

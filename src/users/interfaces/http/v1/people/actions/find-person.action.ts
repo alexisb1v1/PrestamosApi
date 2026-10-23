@@ -60,6 +60,9 @@ export class FindPersonAction {
         birthday: birthdayStr,
         phone: person.phone,
         address: person.address,
+        creditScore: person.creditScore,
+        suggestedLimit: person.suggestedLimit,
+        creditScoreDetail: person.creditScoreDetail,
       };
     });
   }

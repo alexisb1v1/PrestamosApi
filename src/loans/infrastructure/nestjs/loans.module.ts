@@ -13,6 +13,7 @@ import { DeleteInstallmentAction } from '@loans/interfaces/http/v1/installment/a
 import { GetDashboardAction } from '@loans/interfaces/http/v1/dashboard/actions/get-dashboard.action';
 import { GenerateShareLinkAction } from '@loans/interfaces/http/v1/loan/actions/generate-share-link.action';
 import { GetPublicLoanDetailsAction } from '@loans/interfaces/http/v1/loan/actions/get-public-loan-details.action';
+import { RecalculatePersonScoreAction } from '@loans/interfaces/http/v1/loan/actions/recalculate-person-score.action';
 // Handlers
 import { CreateLoanHandler } from '@loans/application/commands/v1/handlers/create-loan.handler';
 import { ListLoansHandler } from '@loans/application/queries/v1/handlers/list-loans.handler';
@@ -55,6 +56,7 @@ import { CreditScoreCronService } from '@loans/application/services/credit-score
     GetDashboardAction,
     GenerateShareLinkAction,
     GetPublicLoanDetailsAction,
+    RecalculatePersonScoreAction,
   ],
   providers: [
     CreateLoanHandler,

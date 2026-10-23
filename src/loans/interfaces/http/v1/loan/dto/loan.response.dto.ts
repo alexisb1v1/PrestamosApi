@@ -75,6 +75,24 @@ export class LoanResponseDto {
   @ApiProperty({ required: false })
   companyId?: string;
 
+  @ApiProperty({ required: false })
+  liquidationDate?: Date;
+
+  @ApiProperty({ required: false })
+  completedOnTime?: boolean;
+
+  @ApiProperty({ required: false })
+  earlyLiquidationDays?: number;
+
+  @ApiProperty({ required: false })
+  extensionDays?: number;
+
+  @ApiProperty({ required: false })
+  delayDays?: number;
+
+  @ApiProperty({ required: false })
+  creditRating?: string | null;
+
   constructor(loan: LoanAppDto) {
     this.id = loan.id;
     this.startDate = loan.startDate;
@@ -97,5 +115,12 @@ export class LoanResponseDto {
     this.collectorName = loan.collectorName;
     this.collectorDocumentNumber = loan.collectorDocumentNumber;
     this.companyId = loan.companyId;
+    this.liquidationDate = loan.liquidationDate;
+    this.completedOnTime = loan.completedOnTime;
+    this.earlyLiquidationDays = loan.earlyLiquidationDays;
+    this.extensionDays = loan.extensionDays;
+    this.delayDays = loan.delayDays;
+    this.creditRating = loan.creditRating;
   }
 }
+

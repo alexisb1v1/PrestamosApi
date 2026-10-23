@@ -7,6 +7,7 @@ import { LoanInstallment } from '@loans/domain/entities/loan-installment.entity'
 import { Result, ok, err } from 'neverthrow';
 import { AppError } from '@shared/errors/app-errors';
 import { CreditScoreCronService } from '@loans/application/services/credit-score-cron.service';
+import { calculateLoanLiquidationIndicators } from '@loans/application/utils/workdays.util';
 
 @CommandHandler(RegisterLoanInstallmentCommand)
 export class RegisterLoanInstallmentHandler implements ICommandHandler<
@@ -48,12 +49,6 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<
 
     const installmentId = await this.repository.save(installment);
 
-    // Efecto Sábado: Recuperación de Puntos si están pagando días atrasados
-    const recoveredDays = Math.floor(amount / loan.fee);
-    if (recoveredDays > 0) {
-      await this.creditScoreService.applySaturdayEffect(loan.idPeople, recoveredDays);
-    }
-
     const refreshedLoan =
       await this.loanRepository.findWithInstallments(loanId);
     if (refreshedLoan?.installments) {
@@ -63,12 +58,31 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<
       );
       const totalToPay = refreshedLoan.amount + refreshedLoan.interest;
       if (totalPaid >= totalToPay) {
+        const indicators = calculateLoanLiquidationIndicators(
+          refreshedLoan.startDate,
+          refreshedLoan.endDate,
+          new Date(),
+        );
+
         refreshedLoan.status = 'Liquidado';
         refreshedLoan.liquidationDate = new Date();
+        refreshedLoan.completedOnTime = indicators.completedOnTime;
+        refreshedLoan.earlyLiquidationDays = indicators.earlyLiquidationDays;
+        refreshedLoan.extensionDays = indicators.extensionDays;
+        refreshedLoan.delayDays = indicators.delayDays;
+        refreshedLoan.creditRating = indicators.creditRating;
         await this.loanRepository.save(refreshedLoan);
       }
+    }
+
+    // Refresca el score crediticio de la persona en segundo plano para reflejar el estado actual
+    try {
+      await this.creditScoreService.calculateAndSavePersonScore(loan.idPeople);
+    } catch (err) {
+      // No bloquea la respuesta del abono si el recálculo analítico falla
     }
 
     return ok(installmentId);
   }
 }
+

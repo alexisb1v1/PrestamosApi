@@ -228,6 +228,11 @@ export class PostgresLoanRepository implements LoanRepository {
       entity.idCompany = loan.companyId;
     }
     entity.liquidationDate = loan.liquidationDate ?? null;
+    entity.completedOnTime = loan.completedOnTime ?? false;
+    entity.earlyLiquidationDays = loan.earlyLiquidationDays ?? 0;
+    entity.extensionDays = loan.extensionDays ?? 0;
+    entity.delayDays = loan.delayDays ?? 0;
+    entity.creditRating = loan.creditRating ?? null;
     return entity;
   }
 
@@ -249,6 +254,12 @@ export class PostgresLoanRepository implements LoanRepository {
       entity.idCompany,
       entity.liquidationDate ? new Date(entity.liquidationDate) : undefined,
     );
+
+    loan.completedOnTime = entity.completedOnTime;
+    loan.earlyLiquidationDays = entity.earlyLiquidationDays;
+    loan.extensionDays = entity.extensionDays;
+    loan.delayDays = entity.delayDays;
+    loan.creditRating = entity.creditRating;
 
     if (entity.person) {
       loan.person = new Person(
