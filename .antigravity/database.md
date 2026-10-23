@@ -26,6 +26,7 @@ erDiagram
         date create_at
         varchar label
         varchar subdomain
+        varchar key_token
         jsonb settings
     }
 
@@ -110,8 +111,9 @@ Representa a cada organización o empresa cliente dentro del modelo SaaS multi-t
 | `company_name` | `VARCHAR` | `NULL` | | `NULL` | Razón social o nombre comercial de la empresa. |
 | `status` | `VARCHAR(10)` | `NOT NULL` | | `'ACTIVE'` | Estado de la empresa (`ACTIVE`, `INACTIVE`). |
 | `create_at` | `DATE` | `NOT NULL` | | `CURRENT_DATE` | Fecha de creación del tenant en la plataforma. |
-| `label` | `VARCHAR` | `NULL` | | `NULL` | Etiqueta o identificador descriptivo interno. |
+| `label` | `VARCHAR` | `NULL` | | `NULL` | Etiqueta o identificador comercial visible para uso humano (ej: "Sede Norte"). |
 | `subdomain` | `VARCHAR` | `NULL` | **UNIQUE / INDEX** | `NULL` | Subdominio web para acceso SaaS (`nombreEmpresa.neocobros.com`). |
+| `key_token` | `VARCHAR(64)` | `NOT NULL` | **UNIQUE / INDEX** | | Llave criptográfica secreta del tenant (ej: `cmp_a8f29c41d7e0b583`). Se sella en el JWT para validación por Clave Compuesta y actúa como *Kill-Switch* instantáneo. |
 | `settings` | `JSONB` | `NOT NULL` | | `'{}'::jsonb` | Configuración granular del tenant (flags de módulos opcionales como `risk_scoring`, preferencias de crédito, etc.). |
 
 #### Estructura del JSONB `company.settings`:
@@ -126,6 +128,29 @@ Representa a cada organización o empresa cliente dentro del modelo SaaS multi-t
     "default_interest_rate": 0.20
   }
 }
+```
+
+#### Script SQL DDL de Migración para `company`:
+```sql
+-- 1. Agregar columna settings
+ALTER TABLE company 
+  ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- 2. Agregar columna key_token
+ALTER TABLE company 
+  ADD COLUMN IF NOT EXISTS key_token VARCHAR(64) NULL;
+
+-- 3. Backfill para empresas existentes
+UPDATE company 
+SET key_token = 'cmp_' || md5(random()::text || clock_timestamp()::text) 
+WHERE key_token IS NULL;
+
+-- 4. Restricción NOT NULL y UNIQUE
+ALTER TABLE company ALTER COLUMN key_token SET NOT NULL;
+ALTER TABLE company ADD CONSTRAINT uq_company_key_token UNIQUE (key_token);
+
+COMMENT ON COLUMN company.key_token IS 'Llave criptográfica secreta del tenant para validación compuesta y Kill-Switch';
+COMMENT ON COLUMN company.settings IS 'Configuración granular del tenant (flags de módulos, scoring, defaults)';
 ```
 
 ---
@@ -213,11 +238,11 @@ Gestiona las credenciales de autenticación, roles y pertenencia a empresa para 
 | `id` | `BIGINT` | `NOT NULL` | **PK** (Autoincrement) | `nextval()` | Identificador único del usuario. |
 | `username` | `VARCHAR(50)` | `NOT NULL` | **INDEX** | | Nombre de usuario o identificador de inicio de sesión. |
 | `password_hash` | `VARCHAR(255)` | `NOT NULL` | | | Contraseña hasheada (bcrypt). |
-| `profile` | `VARCHAR(20)` | `NOT NULL` | | | Rol de usuario (`ADMIN`, `COBRADOR`, `SUPERVISOR`). |
+| `profile` | `VARCHAR(20)` | `NOT NULL` | | | Rol de usuario (`OWNER`, `ADMIN`, `COBRADOR`, `SUPERVISOR`). El `OWNER` es el Superadmin de la plataforma. |
 | `status` | `VARCHAR(10)` | `NOT NULL` | | | Estado de la cuenta (`ACTIVE`, `INACTIVE`, etc.). |
 | `id_people` | `BIGINT` | `NOT NULL` | **FK** -> `people.id` | | Vinculación a la persona titular de la cuenta. |
 | `is_day_closed` | `BOOLEAN` | `NOT NULL` | | `false` | Indica si el cobrador realizó su cierre diario de caja. |
-| `id_company` | `BIGINT` | `NULL` | **FK** -> `company.id` | `NULL` | Tenant/empresa a la que pertenece el usuario. |
+| `id_company` | `BIGINT` | `NULL` | **FK** -> `company.id` | `NULL` | Tenant/empresa a la que pertenece el usuario. En el caso del `OWNER`, es `0` o `NULL` (administrador transversal sin tenant cliente). |
 | `collection_order` | `JSONB` | `NULL` | | `NULL` | Array JSON con los IDs de préstamos para ordenar su ruta de cobro. |
 
 ---

@@ -46,6 +46,8 @@ export class UpdateCompanyStatusHandler implements ICommandHandler<
         const normalizedStatus = company.getNormalizedStatus();
         const redisValue = normalizedStatus === 'ACTIVE' ? '1' : '0';
         await this.redis.set(redisKey, redisValue);
+        // Invalidar caché de autenticación del tenant (Kill-Switch instantáneo)
+        await this.redis.del(`neocobros:tenant:auth:${company.id}`);
         this.logger.log(
           `Estado de empresa ${company.subdomain} sincronizado en Redis con valor ${redisValue} (${normalizedStatus})`,
         );

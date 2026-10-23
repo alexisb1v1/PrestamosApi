@@ -281,13 +281,171 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
   }
 
   /**
+   * Consolida y actualiza en tiempo real los 5 campos analíticos en la tabla `loans`
+   * para todos los préstamos de una persona (independientemente del tenant al que pertenezcan):
+   * - completed_on_time
+   * - early_liquidation_days
+   * - extension_days
+   * - delay_days
+   * - credit_rating
+   * - status / liquidation_date (si ya completó el 100% de la deuda)
+   */
+  async consolidateLoansForPerson(personId: string | number): Promise<void> {
+    const pId = String(personId);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 1. Consolidar préstamos liquidados de esta persona
+    const liquidatedLoans = await this.dataSource.query(
+      `SELECT 
+        l.id,
+        l.start_date,
+        l.end_date,
+        l.liquidation_date,
+        MAX(i.installment_date) AS last_payment_date
+      FROM loans l
+      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
+      WHERE l.id_people = $1 AND l.status = 'Liquidado'
+      GROUP BY l.id, l.start_date, l.end_date, l.liquidation_date`,
+      [pId],
+    );
+
+    for (const loan of liquidatedLoans) {
+      const liqDate = loan.liquidation_date || loan.last_payment_date || loan.end_date;
+      const indicators = calculateLoanLiquidationIndicators(
+        loan.start_date,
+        loan.end_date,
+        liqDate,
+      );
+
+      await this.dataSource.query(
+        `UPDATE loans 
+         SET completed_on_time = $1,
+             early_liquidation_days = $2,
+             extension_days = $3,
+             delay_days = $4,
+             credit_rating = $5,
+             liquidation_date = COALESCE(liquidation_date, $6)
+         WHERE id = $7`,
+        [
+          indicators.completedOnTime,
+          indicators.earlyLiquidationDays,
+          indicators.extensionDays,
+          indicators.delayDays,
+          indicators.creditRating,
+          liqDate,
+          loan.id,
+        ],
+      );
+    }
+
+    // 2. Consolidar préstamos activos de esta persona
+    const activeLoans = await this.dataSource.query(
+      `SELECT 
+        l.id,
+        l.id_people,
+        l.start_date,
+        l.end_date,
+        l.amount,
+        l.interest,
+        l.fee,
+        COALESCE(SUM(i.amount), 0) AS total_paid,
+        MAX(i.installment_date) AS last_payment_date
+      FROM loans l
+      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
+      WHERE l.id_people = $1 AND l.status = 'Activo'
+      GROUP BY l.id, l.id_people, l.start_date, l.end_date, l.amount, l.interest, l.fee`,
+      [pId],
+    );
+
+    for (const loan of activeLoans) {
+      const totalLoan = Number(loan.amount) + Number(loan.interest);
+      const totalPaid = Number(loan.total_paid) || 0;
+
+      // 2.1 Si ya pagó la totalidad, liquidar formalmente
+      if (totalPaid >= totalLoan) {
+        const liqDate = loan.last_payment_date || today;
+        const indicators = calculateLoanLiquidationIndicators(
+          loan.start_date,
+          loan.end_date,
+          liqDate,
+        );
+
+        await this.dataSource.query(
+          `UPDATE loans 
+           SET status = 'Liquidado',
+               liquidation_date = $1,
+               completed_on_time = $2,
+               early_liquidation_days = $3,
+               extension_days = $4,
+               delay_days = $5,
+               credit_rating = $6
+           WHERE id = $7`,
+          [
+            liqDate,
+            indicators.completedOnTime,
+            indicators.earlyLiquidationDays,
+            indicators.extensionDays,
+            indicators.delayDays,
+            indicators.creditRating,
+            loan.id,
+          ],
+        );
+        continue;
+      }
+
+      // 2.2 Préstamo continúa activo con saldo pendiente
+      const workdaysDue = countWorkdaysDue(loan.start_date, today);
+      const fee = Number(loan.fee) || 1;
+      const paidInstallments = totalPaid / fee;
+      const delayDays = Math.max(0, Math.floor(workdaysDue - paidInstallments));
+
+      const contractEndDate = new Date(loan.end_date);
+      contractEndDate.setHours(0, 0, 0, 0);
+
+      const isOverdueContract = contractEndDate < today;
+      const extensionDays = isOverdueContract ? countWorkdaysBetween(loan.end_date, today) : 0;
+      const completedOnTime = false;
+      const earlyLiquidationDays = 0;
+
+      let creditRating: 'A' | 'B' | 'C' = 'A';
+      if (delayDays > 3 || extensionDays > 3) {
+        creditRating = 'C';
+      } else if (delayDays > 0 || extensionDays > 0) {
+        creditRating = 'B';
+      }
+
+      await this.dataSource.query(
+        `UPDATE loans 
+         SET completed_on_time = $1,
+             early_liquidation_days = $2,
+             extension_days = $3,
+             delay_days = $4,
+             credit_rating = $5
+         WHERE id = $6`,
+        [
+          completedOnTime,
+          earlyLiquidationDays,
+          extensionDays,
+          delayDays,
+          creditRating,
+          loan.id,
+        ],
+      );
+    }
+  }
+
+  /**
    * Evalúa y recalcula a demanda (On-Demand) el score y los 3 pilares de una persona en < 15 ms.
    * Utilizable tanto por el cron nocturno como por endpoints y eventos post-liquidación.
    */
   async calculateAndSavePersonScore(personId: string | number): Promise<{ creditScore: number; creditScoreDetail: ScoreDetailPayload }> {
     const pId = String(personId);
 
-    // 1. Obtener todos los préstamos del prestatario en todos los tenants
+    // 0. Consolidar primero en tiempo real los préstamos de esta persona en la tabla `loans`
+    await this.consolidateLoansForPerson(pId);
+
+    // 1. Obtener todos los préstamos del prestatario en todos los tenants (frescos y consolidados)
     const loans = await this.dataSource.query(
       `SELECT 
         l.id,
@@ -396,7 +554,7 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
     let maxActiveDelayDays = 0;
     let unpaidInstallmentsCount = 0;
     let p2Status: 'AL_DIA' | 'MORA_LEVE' | 'MORA_MODERADA' | 'MORA_GRAVE' | 'MORA_CRITICA' = 'AL_DIA';
-    let p2Assessment = '100% al día en compromisos vigentes.';
+    let p2Assessment = '';
 
     if (activeLoans.length > 0) {
       const today = new Date();
@@ -436,6 +594,14 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         p2Status = 'MORA_CRITICA';
         p2Assessment = `Mora crítica superior a ${maxActiveDelayDays} cuotas impagas.`;
       }
+    } else {
+      p2Score = 45;
+      p2Status = 'AL_DIA';
+      if (totalLoansCount === 0) {
+        p2Assessment = 'Sin préstamos activos en curso (no registra deudas pendientes).';
+      } else {
+        p2Assessment = 'Sin compromisos activos actualmente; créditos previos 100% cancelados.';
+      }
     }
 
     // ----------------------------------------------------
@@ -444,7 +610,7 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
     let p3Score = 15;
     let hasCrossTenantArrears = false;
     let p3Status: 'OPTIMO' | 'MODERADO' | 'SOBRE_ENDEUDADO' | 'ALERTA_CRUZADA' = 'OPTIMO';
-    let p3Assessment = 'Capacidad de endeudamiento y exposición controlada.';
+    let p3Assessment = '';
 
     if (activeLoans.length > 0) {
       // Verificación de mora cruzada: si tiene créditos en >1 tenant y alguno tiene mora
@@ -466,6 +632,14 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         p3Status = 'SOBRE_ENDEUDADO';
         p3Assessment = 'Tres o más créditos activos concurrentes (alta exposición).';
       }
+    } else {
+      p3Score = 15;
+      p3Status = 'OPTIMO';
+      if (totalLoansCount === 0) {
+        p3Assessment = 'Capacidad crediticia 100% disponible (sin endeudamiento previo).';
+      } else {
+        p3Assessment = 'Línea de crédito 100% disponible; sin operaciones simultáneas activas.';
+      }
     }
 
     // ----------------------------------------------------
@@ -476,7 +650,9 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
     let rating: 'A+' | 'A' | 'B' | 'C' = 'A';
     let ratingLabel = 'Bueno / Riesgo Bajo';
     let recStatus: 'APROBADO' | 'SUJETO_A_CONDICIONES' | 'BLOQUEADO' = 'APROBADO';
-    let recAction = 'Apto para crédito estándar.';
+    let recAction = totalLoansCount === 0
+      ? 'Cliente nuevo sin historial: apto para primer crédito con monto inicial estándar.'
+      : 'Apto para crédito estándar.';
     let riskLevel: 'MINIMO' | 'BAJO' | 'MEDIO' | 'ALTO' = 'BAJO';
 
     if (finalScore >= 90) {

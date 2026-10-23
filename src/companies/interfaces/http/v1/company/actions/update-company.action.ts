@@ -31,7 +31,7 @@ export class UpdateCompanyAction {
     const result = await this.commandBus.execute<
       UpdateCompanyCommand,
       Result<void, AppError>
-    >(new UpdateCompanyCommand(companyId, dto.companyName, dto.subdomain));
+    >(new UpdateCompanyCommand(companyId, dto.companyName, dto.subdomain, dto.settings));
     return matchResult(result, () => ({
       message: 'Empresa actualizada exitosamente',
     }));

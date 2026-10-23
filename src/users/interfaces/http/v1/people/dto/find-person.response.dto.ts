@@ -10,5 +10,6 @@ export class FindPersonResponseDto {
   creditScore?: number;
   suggestedLimit?: number | null;
   creditScoreDetail?: Record<string, any> | null;
+  riskScoringEnabled?: boolean;
 }
 

@@ -1,4 +1,11 @@
-import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  BadRequestException,
+  Req,
+  Inject,
+} from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -13,12 +20,20 @@ import { Person } from '@users/domain/entities/person.entity';
 import { Result } from 'neverthrow';
 import { AppError } from '@shared/errors/app-errors';
 import { matchResult } from '@shared/http/match-result';
+import {
+  CompanyRepository,
+  CompanyRepositoryToken,
+} from '@companies/domain/repositories/company.repository';
 
 @ApiTags('Person')
 @ApiBearerAuth()
 @Controller('api/v1/person')
 export class FindPersonAction {
-  constructor(private readonly queryBus: QueryBus) {}
+  constructor(
+    private readonly queryBus: QueryBus,
+    @Inject(CompanyRepositoryToken)
+    private readonly companyRepository: CompanyRepository,
+  ) {}
 
   @Get('search')
   @ApiOperation({ summary: 'Find person by document' })
@@ -33,15 +48,39 @@ export class FindPersonAction {
   async execute(
     @Query('documentType') documentType: string,
     @Query('documentNumber') documentNumber: string,
+    @Req() req: any,
   ): Promise<FindPersonResponseDto> {
-    if ((documentType === 'DNI' || documentType === '1') && !/^\d{8}$/.test(documentNumber)) {
-      throw new BadRequestException('El DNI debe tener exactamente 8 dígitos numéricos.');
+    if (
+      (documentType === 'DNI' || documentType === '1') &&
+      !/^\d{8}$/.test(documentNumber)
+    ) {
+      throw new BadRequestException(
+        'El DNI debe tener exactamente 8 dígitos numéricos.',
+      );
     }
+
+    // Validación de Tenant y Server-Side Feature Gating (pre-validada por JwtAuthGuard)
+    const currentUser = req.user;
+    const company =
+      req.company ||
+      (currentUser?.companyId && currentUser?.keyToken
+        ? await this.companyRepository.findByIdAndKeyToken(
+            String(currentUser.companyId),
+            String(currentUser.keyToken),
+          )
+        : null);
+
+    const riskScoringEnabled = !!(
+      company &&
+      company.getNormalizedStatus() === 'ACTIVE' &&
+      company.settings?.features?.risk_scoring
+    );
 
     const result = await this.queryBus.execute<
       FindPersonQuery,
       Result<Person, AppError>
     >(new FindPersonQuery(documentType, documentNumber));
+
     return matchResult(result, (person) => {
       const birthdayValue = person.birthday;
       let birthdayStr: string | null = null;
@@ -51,6 +90,7 @@ export class FindPersonAction {
             ? birthdayValue.toISOString().substring(0, 10)
             : String(birthdayValue).substring(0, 10);
       }
+
       return {
         id: person.id ?? '',
         documentType: person.documentType,
@@ -60,9 +100,13 @@ export class FindPersonAction {
         birthday: birthdayStr,
         phone: person.phone,
         address: person.address,
-        creditScore: person.creditScore,
-        suggestedLimit: person.suggestedLimit,
-        creditScoreDetail: person.creditScoreDetail,
+        riskScoringEnabled,
+        // Solo expone datos de Central de Riesgos si el tenant tiene activo el servicio
+        creditScore: riskScoringEnabled ? person.creditScore : undefined,
+        creditScoreDetail: riskScoringEnabled
+          ? person.creditScoreDetail
+          : undefined,
+        suggestedLimit: null, // Queda en NULL según especificación
       };
     });
   }

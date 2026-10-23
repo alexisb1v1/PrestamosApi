@@ -6,6 +6,8 @@ export class Company {
 
   label?: string;
   subdomain?: string;
+  keyToken?: string;
+  settings?: Record<string, any>;
 
   constructor(
     companyName: string,
@@ -14,6 +16,8 @@ export class Company {
     id?: string,
     label?: string,
     subdomain?: string,
+    keyToken?: string,
+    settings?: Record<string, any>,
   ) {
     this.id = id;
     this.companyName = companyName;
@@ -21,6 +25,8 @@ export class Company {
     this.createdAt = createdAt;
     this.label = label;
     this.subdomain = subdomain;
+    this.keyToken = keyToken;
+    this.settings = settings || {};
   }
 
   getNormalizedStatus(): string {

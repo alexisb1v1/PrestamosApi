@@ -1,4 +1,13 @@
-import { Controller, Post, Param, UseGuards, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Param,
+  UseGuards,
+  NotFoundException,
+  ForbiddenException,
+  Req,
+  Inject,
+} from '@nestjs/common';
 import {
   ApiOperation,
   ApiResponse,
@@ -11,6 +20,10 @@ import {
   CreditScoreCronService,
   ScoreDetailPayload,
 } from '@loans/application/services/credit-score-cron.service';
+import {
+  CompanyRepository,
+  CompanyRepositoryToken,
+} from '@companies/domain/repositories/company.repository';
 
 export class RecalculateScoreResponseDto {
   creditScore: number;
@@ -22,7 +35,11 @@ export class RecalculateScoreResponseDto {
 @UseGuards(RolesGuard)
 @Controller('api/v1/person')
 export class RecalculatePersonScoreAction {
-  constructor(private readonly creditScoreService: CreditScoreCronService) {}
+  constructor(
+    private readonly creditScoreService: CreditScoreCronService,
+    @Inject(CompanyRepositoryToken)
+    private readonly companyRepository: CompanyRepository,
+  ) {}
 
   @Post(':id/recalculate-score')
   @ApiOperation({
@@ -34,9 +51,33 @@ export class RecalculatePersonScoreAction {
     description: 'Score recalculado con éxito.',
     type: RecalculateScoreResponseDto,
   })
-  async execute(@Param('id') id: string): Promise<RecalculateScoreResponseDto> {
+  async execute(
+    @Param('id') id: string,
+    @Req() req: any,
+  ): Promise<RecalculateScoreResponseDto> {
+    const currentUser = req.user;
+    const company =
+      req.company ||
+      (currentUser?.companyId && currentUser?.keyToken
+        ? await this.companyRepository.findByIdAndKeyToken(
+            String(currentUser.companyId),
+            String(currentUser.keyToken),
+          )
+        : null);
+
+    if (!company || company.getNormalizedStatus() !== 'ACTIVE') {
+      throw new ForbiddenException('Empresa inactiva o no autorizada');
+    }
+
+    if (!company.settings?.features?.risk_scoring) {
+      throw new ForbiddenException(
+        'Su empresa no tiene contratado el servicio de Central de Riesgos',
+      );
+    }
+
     try {
-      const result = await this.creditScoreService.calculateAndSavePersonScore(id);
+      const result =
+        await this.creditScoreService.calculateAndSavePersonScore(id);
       return result;
     } catch (err: any) {
       throw new NotFoundException(

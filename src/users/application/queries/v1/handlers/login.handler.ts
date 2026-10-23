@@ -75,15 +75,21 @@ export class LoginHandler implements IQueryHandler<
 
     // 2. Validate Company Status (Excluding OWNER)
     let companyStatus: string | undefined;
-    if (user.idCompany) {
-      const company = await this.companyRepository.findById(user.idCompany);
+    let companyKeyToken: string | undefined;
+    const isOwner = user.profile === 'OWNER' || String(user.idCompany) === '0';
+
+    if (!isOwner && user.idCompany) {
+      const company = await this.companyRepository.findById(user.idCompany.toString());
       if (company) {
         companyStatus = company.getNormalizedStatus();
+        companyKeyToken = company.keyToken;
 
-        if (user.profile !== 'OWNER' && companyStatus !== 'ACTIVE') {
+        if (companyStatus !== 'ACTIVE') {
           return err('FORBIDDEN');
         }
       }
+    } else if (isOwner) {
+      companyStatus = 'ACTIVE';
     }
 
     // 3. Verify password
@@ -107,6 +113,8 @@ export class LoginHandler implements IQueryHandler<
       username: user.username,
       profile: user.profile,
       personId: person.id,
+      companyId: user.idCompany,
+      keyToken: companyKeyToken,
       fgp: crypto.createHash('sha256').update(fingerprint).digest('hex'),
     };
     const token = this.jwtService.sign(payload);

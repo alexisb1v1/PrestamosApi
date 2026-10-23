@@ -10,6 +10,8 @@ export class CompanyMapper {
       createdAt: company.createdAt,
       label: company.label,
       subdomain: company.subdomain,
+      keyToken: company.keyToken,
+      settings: company.settings,
     };
   }
 }

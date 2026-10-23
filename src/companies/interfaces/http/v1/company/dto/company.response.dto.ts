@@ -21,6 +21,12 @@ export class CompanyResponseDto {
   @ApiProperty({ required: false })
   subdomain?: string;
 
+  @ApiProperty({ required: false })
+  keyToken?: string;
+
+  @ApiProperty({ required: false })
+  settings?: Record<string, any>;
+
   constructor(company: CompanyAppDto) {
     this.id = company.id!;
     this.companyName = company.companyName;
@@ -40,5 +46,7 @@ export class CompanyResponseDto {
     this.createdAt = company.createdAt;
     this.label = company.label;
     this.subdomain = company.subdomain;
+    this.keyToken = company.keyToken;
+    this.settings = company.settings;
   }
 }

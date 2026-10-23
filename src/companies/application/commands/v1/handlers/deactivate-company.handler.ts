@@ -42,6 +42,7 @@ export class DeactivateCompanyHandler implements ICommandHandler<
         const systemDomain = this.configService.get<string>('SYSTEM_DOMAIN') || 'localhost';
         const redisKey = `tenant:${company.subdomain}.${systemDomain}`;
         await this.redis.set(redisKey, '0');
+        await this.redis.del(`neocobros:tenant:auth:${company.id}`);
         this.logger.log(`Empresa ${company.subdomain} sincronizada en Redis como inactiva (0)`);
       } catch (redisError) {
         this.logger.error(

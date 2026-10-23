@@ -24,4 +24,10 @@ export class CompanyEntity {
 
   @Column({ name: 'subdomain', type: 'character varying', nullable: true })
   subdomain?: string;
+
+  @Column({ name: 'key_token', type: 'character varying', length: 64, unique: true, nullable: true })
+  keyToken?: string;
+
+  @Column({ name: 'settings', type: 'jsonb', nullable: true, default: () => "'{}'" })
+  settings?: Record<string, any>;
 }

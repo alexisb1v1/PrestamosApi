@@ -38,6 +38,9 @@ export class UpdateCompanyHandler implements ICommandHandler<
     if (command.subdomain !== undefined) {
       company.subdomain = command.subdomain;
     }
+    if (command.settings !== undefined) {
+      company.settings = command.settings;
+    }
 
     await this.companyRepository.update(company);
 
@@ -62,6 +65,11 @@ export class UpdateCompanyHandler implements ICommandHandler<
         this.logger.error(`Error al actualizar Redis para subdominio ${company.subdomain}:`, redisError);
       }
     }
+
+    // Invalidar caché de autenticación del tenant
+    try {
+      await this.redis.del(`neocobros:tenant:auth:${company.id}`);
+    } catch {}
 
     return ok(undefined);
   }

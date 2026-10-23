@@ -9,6 +9,7 @@ import { CompanyRepositoryToken } from '@companies/domain/repositories/company.r
 import { CreateCompanyHandler } from '@companies/application/commands/v1/handlers/create-company.handler';
 import { UpdateCompanyHandler } from '@companies/application/commands/v1/handlers/update-company.handler';
 import { UpdateCompanyStatusHandler } from '@companies/application/commands/v1/handlers/update-company-status.handler';
+import { RefreshCompanyKeyTokenHandler } from '@companies/application/commands/v1/handlers/refresh-company-key-token.handler';
 
 // Query Handlers
 import { ListCompaniesHandler } from '@companies/application/queries/v1/handlers/list-companies.handler';
@@ -22,6 +23,7 @@ import { UpdateCompanyAction } from '@companies/interfaces/http/v1/company/actio
 import { UpdateCompanyStatusAction } from '@companies/interfaces/http/v1/company/actions/update-company-status.action';
 import { VerifyCompanyDomainAction } from '@companies/interfaces/http/v1/company/actions/verify-company-domain.action';
 import { GetCompanyPublicInfoAction } from '@companies/interfaces/http/v1/company/actions/get-company-public-info.action';
+import { RefreshCompanyKeyTokenAction } from '@companies/interfaces/http/v1/company/actions/refresh-company-key-token.action';
 
 import { RedisModule } from '@shared/redis/redis.module';
 
@@ -29,6 +31,7 @@ const CommandHandlers = [
   CreateCompanyHandler,
   UpdateCompanyHandler,
   UpdateCompanyStatusHandler,
+  RefreshCompanyKeyTokenHandler,
 ];
 
 const QueryHandlers = [
@@ -44,6 +47,7 @@ const Controllers = [
   UpdateCompanyStatusAction,
   VerifyCompanyDomainAction,
   GetCompanyPublicInfoAction,
+  RefreshCompanyKeyTokenAction,
 ];
 
 @Module({

@@ -51,7 +51,7 @@ sequenceDiagram
             API-->>PWA: 401 Unauthorized ("Credenciales inválidas")
         else Credenciales válidas
             DB-->>Q: UserEntity + PersonEntity (profile, id, status, is_day_closed)
-            Q->>JWT: Genera Access Token (sub, username, profile, companyId, fgp)
+            Q->>JWT: Genera Access Token (sub, username, profile, companyId, keyToken, fgp)
             JWT-->>Q: Token JWT firmado
             Q-->>API: Result.ok({ accessToken, user, company })
             API-->>PWA: 200 OK con Token y perfil
@@ -60,12 +60,151 @@ sequenceDiagram
     end
 ```
 
-### Reglas Clave de Seguridad y Multi-Tenancy
-- **Sellado Criptográfico del Tenant (`companyId` en JWT):**
-  - El identificador de la empresa (`companyId`) se sella directamente en el payload del token JWT firmado con `JWT_SECRET`.
-  - **Prevención de Suplantación (*Tenant Spoofing*):** No se utilizan cabeceras manuales en el cliente (como `x-tenant` o `x-company-id`) para evitar que un usuario manipule el identificador de su empresa en peticiones HTTP.
-  - En cualquier endpoint protegido, el backend lee de forma segura e inmutable `req.user.companyId`.
+### Reglas Clave de Seguridad y Multi-Tenancy (Opción B: Clave Compuesta y Aceleración Redis)
+- **Defensa por Clave Compuesta (*Composite Key Defense*):**
+  - El token JWT sella dos valores inmutables del tenant: `companyId` y `keyToken` (ej: `cmp_a8f29c41d7e0b583`).
+  - En cada petición protegida, el guard global [`JwtAuthGuard`](file:///d:/Personal/Repositorios/PrestamosApi/src/users/infrastructure/security/jwt-auth.guard.ts) verifica la clave compuesta con aceleración en **Redis**:
+    - **Caché en RAM (`neocobros:tenant:auth:<companyId>`):** Latencia **$< 0.1 \text{ ms}$**, 0 conexiones a PostgreSQL.
+    - **Cache Miss / Fallback:** Consulta directa a PostgreSQL:
+      $$\text{WHERE } id = :companyId \text{ AND } key\_token = :keyToken \text{ AND } status = \text{'ACTIVE'}$$
+      y almacena el resultado en Redis con TTL de 10 minutos (600s).
+  - Un atacante que intente adivinar el ID correlativo de una empresa es incapaz de acertar el `key_token` aleatorio criptográfico (probabilidad $< 10^{-28}$).
+- **Mecanismo de *Kill-Switch* Instantáneo:**
+  - Si una empresa deja de pagar o se detecta una vulneración de credenciales, basta con regenerar su `key_token` en la base de datos o cambiar su estado a `SUSPENDED` / `INACTIVE`.
+  - Los handlers de comando (`update-company-status.handler.ts` y `update-company.handler.ts`) invalidan automáticamente la clave `neocobros:tenant:auth:<companyId>` en Redis mediante `redis.del()`.
+  - **En ese mismo milisegundo**, todas las sesiones activas de todos los cobradores y administradores de esa empresa quedan automáticamente invalidadas sin necesidad de reiniciar servidores.
+- **Prevención de Suplantación (*Tenant Spoofing*):** No se utilizan cabeceras manuales en el cliente (como `x-tenant` o `x-company-id`).
 - **Huella Digital del Dispositivo (`fgp`):** Se valida criptográficamente mediante el header `x-fingerprint` para garantizar que el token solo sea operado desde el dispositivo físico autorizado.
+- **Acceso Maestro del Superadministrador (`OWNER` / `central.neocobros.com`):**
+  - El subdominio `central` es el **Portal Maestro** de la plataforma NeoCobros.
+  - En **Caddy**, `https://central.neocobros.com` cuenta con un registro fijo directo y su propio certificado, por lo que **no pasa por el microservicio de verificación ni por On-Demand TLS**. El microservicio `verifyDomain` y [`VerifyCompanyDomainHandler`](file:///d:/Personal/Repositorios/PrestamosApi/src/companies/application/queries/v1/handlers/verify-company-domain.handler.ts) están reservados exclusivamente para los subdominios dinámicos de los tenants cliente (`*.neocobros.com`).
+  - El usuario con perfil `OWNER` tiene `id_company = 0` (o `null`), ya que **no pertenece a ningún tenant cliente**, sino que administra transversalmente todo el sistema (no requiere ni debe tener una fila ficticia en `company`).
+  - **Bypass de Tenant en [`JwtAuthGuard`](file:///d:/Personal/Repositorios/PrestamosApi/src/users/infrastructure/security/jwt-auth.guard.ts):** Al detectar `profile === 'OWNER'` o `companyId === '0'`, el guard omite la validación de `keyToken` y Kill-Switch de tenant (evitando búsquedas erróneas de una empresa inexistente con ID 0) e inyecta una entidad virtual de `Company` con todas las features activas (`risk_scoring: true`) para permitir el acceso total.
+
+### 🗄️ Convenciones de Redis y Separación Estricta de Namespaces
+
+| Patrón de Clave | TTL | Responsabilidad / Consumidores | Regla de Oro Arquitectónica |
+| :--- | :--- | :--- | :--- |
+| `tenant:<domain>` | Indefinido / Permanente | **Ecosistema Multi-Proyecto:** Consumido por el reverse-proxy **Caddy** y el microservicio Go [`verifyDomain`](file:///d:/Personal/Repositorios/verifyDomain/README.md) para TLS On-Demand y autorización perimetral de subdominios. | **INMUTABLE (No Renombrar):** Nunca debe colocársele prefijos privados (como `neocobros:`), ya que múltiples proyectos y proxies (`neocobros.com`, `neoruta.com`) dependen de este formato exacto de clave. |
+| `neocobros:tenant:auth:<companyId>` | 10 min (600s) | **Ecosistema Privado NeoCobros:** Consumido exclusivamente por [`JwtAuthGuard`](file:///d:/Personal/Repositorios/PrestamosApi/src/users/infrastructure/security/jwt-auth.guard.ts) para validar la sesión compuesta del tenant en microsegundos y habilitar el Kill-Switch instantáneo. | **ORGANIZADO EN CARPETAS:** Debe usar siempre la jerarquía `neocobros:tenant:auth:{id}` para no saturar la raíz de Redis y mantener orden en interfaces como RedisInsight. |
+
+### 1.1 Arquitectura Perimetral y Validación de Subdominios (Caddy + verifyDomain)
+
+El ecosistema NeoCobros opera con dos categorías estrictas de dominios perimetrales a nivel del proxy inverso **Caddy**:
+
+#### A. Dominio Maestro Central (`https://central.neocobros.com` — Portal del OWNER)
+* **Registro Fijo y Estático en Caddy:** Cuenta con una directiva de bloque de servidor explícita y dedicada en el `Caddyfile`.
+* **Exención Absoluta de Microservicio:** **NO utiliza `on_demand_tls`** ni interactúa en ningún momento con el microservicio Go `verifyDomain`.
+* **Cero Consulta a Redis y Cero Consulta a Base de Datos:** Caddy gestiona y renueva directamente su propio certificado SSL para `central.neocobros.com`.
+* **Propósito y Aislamiento:** Es el portal administrativo exclusivo del Superadministrador del sistema (`OWNER`, con `id_company = 0` o `NULL`).
+* **Regla de Diseño Mandatoria:** El endpoint de verificación de tenants en `PrestamosApi` (`/api/v1/company/verify-domain`) **no debe servir para que el microservicio consulte `central`**. En la base de datos de NeoCobros no existe ni debe existir una empresa cliente llamada `"central"` o con ID 0.
+
+#### B. Subdominios Dinámicos de Tenants (`https://<empresa>.neocobros.com` — Empresas Cliente)
+Para los subdominios de clientes, Caddy delega la autorización de certificados en tiempo real mediante la directriz perimetral `on_demand_tls`:
+
+1. **Petición Entrante:** Caddy intercepta una conexión HTTPS hacia `https://<empresa>.neocobros.com`.
+2. **Consulta al Microservicio (MS):** Caddy ejecuta una petición HTTP interna hacia el microservicio Go:  
+   `GET http://verifydomain:3000/api/v1/tenants/verify-domain?domain=<empresa>.neocobros.com`
+3. **Paso 1 — Consulta en Redis (`tenant:<subdominio>.<dominio>`):**
+   * El microservicio Go consulta la clave por `subdominio.dominio`: `GET tenant:<empresa>.neocobros.com`.
+   * **Cache Hit (Valor `"1"`):** Si la clave existe en Redis con valor `"1"`, `verifyDomain` responde `200 OK` en $< 1 \text{ ms}$. Caddy emite/sirve de inmediato el certificado SSL y enruta el tráfico hacia el Frontend.
+4. **Paso 2 — Auto-Curación (*Self-Healing Fallback* a `PrestamosApi`):**
+   * **Cache Miss (Clave no encontrada o nil):** Ocurre si la caché de Redis se reinició, se purgó o aún no se ha sincronizado la empresa.
+   * En este caso, el microservicio `verifyDomain` identifica el sufijo `.neocobros.com` y consulta el endpoint de verificación de `PrestamosApi`:  
+     `GET /api/v1/company/verify-domain?domain=<empresa>.neocobros.com`
+   * [`VerifyCompanyDomainHandler`](file:///d:/Personal/Repositorios/PrestamosApi/src/companies/application/queries/v1/handlers/verify-company-domain.handler.ts) extrae el subdominio y consulta la tabla `company` en PostgreSQL:
+     $$\text{SELECT * FROM company WHERE subdomain = :subdomain}$$
+   * **Si la empresa existe y su estado es `ACTIVE`:**
+     * `PrestamosApi` regenera y repuebla automáticamente la clave en Redis:
+       $$\text{SET tenant:<empresa>.neocobros.com "1"}$$
+     * `PrestamosApi` responde `200 OK {"verified": true}`.
+     * `verifyDomain` recibe la confirmación, retorna `200 OK` a Caddy y se autoriza el apretón de manos SSL (*TLS handshake*) sin interrupción de servicio para los usuarios.
+   * **Si la empresa no existe o está inactiva (`INACTIVE` / `SUSPENDED`):**
+     * `PrestamosApi` responde `404 Not Found` o `403 Forbidden`.
+     * `verifyDomain` responde `403 Forbidden {"verified": false, "error": "Dominio no registrado o inactivo"}`.
+     * Caddy rechaza la solicitud de certificado SSL perimetralmente, impidiendo cualquier conexión hacia el tenant.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cliente as Navegador Cliente
+    participant Caddy as Caddy Proxy (TLS On-Demand)
+    participant VD as verifyDomain (Microservicio Go)
+    participant Redis as Redis (tenant:domain)
+    participant API as PrestamosApi (/verify-domain)
+    participant DB as PostgreSQL (company)
+
+    Note over Cliente,Caddy: Flujo de Subdominios Dinámicos (*.neocobros.com)
+    Cliente->>Caddy: Conexión HTTPS (empresa.neocobros.com)
+    Caddy->>VD: GET /api/v1/tenants/verify-domain?domain=empresa.neocobros.com
+    VD->>Redis: GET tenant:empresa.neocobros.com
+    alt Clave existe y es "1" (Hit en RAM < 1ms)
+        Redis-->>VD: "1"
+        VD-->>Caddy: 200 OK {"verified": true}
+        Caddy->>Cliente: Sirve certificado SSL y entrega Frontend
+    else Clave no existe en Redis (Miss / Self-Healing)
+        Redis-->>VD: nil (not found)
+        VD->>API: GET /api/v1/company/verify-domain?domain=empresa.neocobros.com
+        API->>DB: SELECT * FROM company WHERE subdomain = :subdomain
+        alt Empresa existe y está ACTIVE
+            DB-->>API: CompanyEntity (ACTIVE)
+            API->>Redis: SET tenant:empresa.neocobros.com "1" (Regenera caché)
+            API-->>VD: 200 OK {"verified": true}
+            VD-->>Caddy: 200 OK {"verified": true}
+            Caddy->>Cliente: Emite certificado SSL y entrega Frontend
+        else Empresa no existe o está INACTIVE
+            DB-->>API: No encontrada o INACTIVE
+            API-->>VD: 404 Not Found / 403 Forbidden
+            VD-->>Caddy: 403 Forbidden {"verified": false}
+            Caddy-->>Cliente: Rechaza TLS Handshake (Acceso Denegado)
+        end
+    end
+```
+
+> [!IMPORTANT]
+> **Por qué no se debe modificar la clave `tenant:<domain>`:**
+> El microservicio [`verifyDomain`](file:///d:/Personal/Repositorios/verifyDomain/README.md) es un componente transversal de infraestructura. Inspecciona el sufijo del dominio: si termina en `.neocobros.com` consulta a `PrestamosApi`, pero si termina en `.neoruta.com` consulta a `VecturaApi`. Ambos sistemas comparten la misma instancia de Redis y el mismo contrato `tenant:<domain>`. Cambiar ese prefijo o agregar nombres privados (`neocobros:tenant:...`) desconectaría la auto-emisión de SSL para todos los proyectos del ecosistema.
+
+### 1.2 Rotación Forzada de `key_token` y Kill-Switch Instantáneo de Tenant
+
+Permite a los administradores centrales forzar la revocación inmediata de **todas** las sesiones activas de cobradores y administradores de una empresa específica ante pérdida de dispositivos, bajas de personal o emergencias de seguridad.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Administrador Central
+    participant UI as Frontend (Empresas / ConfirmModal)
+    participant API as RefreshCompanyKeyTokenAction
+    participant H as RefreshCompanyKeyTokenHandler
+    participant DB as PostgreSQL (company)
+    participant Redis as Redis (neocobros:tenant:auth)
+    actor Cobrador as Cobrador Activo (Dispositivo)
+    participant Guard as JwtAuthGuard
+
+    Admin->>UI: Clic en botón "Kill-Switch" (RotateCcw) y confirma modal
+    UI->>API: POST /api/v1/company/:id/refresh-key-token
+    API->>H: RefreshCompanyKeyTokenCommand(companyId)
+    H->>DB: Genera newKeyToken ("cmp_" + randomHex) y actualiza SOLO key_token
+    H->>Redis: DEL neocobros:tenant:auth:{companyId}
+    H-->>API: Result.ok({ newKeyToken })
+    API-->>UI: 200 OK ("Llave regenerada y sesiones revocadas")
+
+    Note over Cobrador,Guard: Siguiente petición de cualquier usuario de ese tenant:
+    Cobrador->>Guard: Petición HTTP con JWT antiguo (antiguo keyToken)
+    Guard->>Redis: GET neocobros:tenant:auth:{companyId} (Cache Miss por DEL)
+    Redis-->>Guard: nil
+    Guard->>DB: SELECT * FROM company WHERE id = :id AND status = 'ACTIVE'
+    DB-->>Guard: CompanyEntity (con newKeyToken)
+    Guard->>Guard: Compara company.keyToken !== payload.keyToken
+    Guard-->>Cobrador: 401 Unauthorized ("Token de sesión revocado. Inicie sesión nuevamente")
+```
+
+### 1.3 Mantenimiento Dinámico de Configuración de Empresa (`company.settings`)
+
+La entidad `company` dispone de la columna `settings JSONB`, la cual administra flags funcionales y preferencias del tenant:
+- **Endpoint:** `PUT /api/v1/company/:companyId` recibiendo `settings: { features: { risk_scoring: boolean }, ... }`.
+- **Efecto de Caché:** El comando [`UpdateCompanyHandler`](file:///d:/Personal/Repositorios/PrestamosApi/src/companies/application/commands/v1/handlers/update-company.handler.ts) persiste `company.settings` e invalida automáticamente la caché `neocobros:tenant:auth:{companyId}` en Redis para que el cambio de permisos tome efecto de inmediato en el siguiente request de la empresa.
+- **Frontend:** Administrado desde el modal [`CreateCompanyModal.tsx`](file:///d:/Personal/Repositorios/Prestamos/Prestamos/app/components/CreateCompanyModal.tsx) mediante un toggle switch para el módulo *Central de Riesgos & Scoring*.
 
 ---
 
@@ -85,8 +224,8 @@ El acceso a la **Central de Riesgos y Evaluación Crediticia** se administra y p
 }
 ```
 
-* **Validación en Servidor:** Al recibir `GET /api/v1/person/search`, el backend extrae `companyId` del JWT verificado y consulta el registro de la empresa en la BD:
-  * **Si `risk_scoring = true`:** El backend incluye en la respuesta `riskScoringEnabled: true` y entrega los objetos `creditScore` y `creditScoreDetail`.
+* **Validación en Servidor (1 Sola Petición HTTP):** Al recibir `GET /api/v1/person/search`, el backend extrae `(companyId, keyToken)` del JWT verificado y consulta el registro de la empresa en la BD:
+  * **Si `risk_scoring = true`:** El backend incluye en la respuesta `riskScoringEnabled: true` y entrega los objetos `creditScore` y `creditScoreDetail` en ese mismo viaje (< 20 ms).
   * **Si `risk_scoring = false` (o ausente):** El backend retorna `riskScoringEnabled: false` y **omite por completo** los datos de scoring (`creditScore` y `creditScoreDetail` quedan `undefined` / no expuestos).
 * **Protección del Recálculo On-Demand:** Si una empresa no autorizada invoca `POST /api/v1/person/:id/recalculate-score`, el backend responde inmediatamente con **`403 Forbidden`** (*"Su empresa no tiene contratado el servicio de Central de Riesgos"*).
 * **Comportamiento en Frontend:**
@@ -103,14 +242,15 @@ sequenceDiagram
     participant API as Backend (People / Loans / Company)
     participant DB as PostgreSQL (company, people, loans)
 
-    Note over A, PWA: PASO 1: Búsqueda y Validación de Cliente
+    Note over A, PWA: PASO 1: Búsqueda y Validación de Cliente (1 Sola Petición)
     A->>PWA: Ingresa Tipo de Doc (DNI) y Número
-    PWA->>API: GET /api/v1/people/search?docType=DNI&docNumber=...
+    PWA->>API: GET /api/v1/people/search?docType=DNI&docNumber=... (JWT en Authorization)
+    API->>API: Extrae companyId y keyToken del JWT
+    API->>DB: Valida company (id = :companyId AND key_token = :keyToken AND status = 'ACTIVE')
     API->>DB: SELECT * FROM people WHERE document_number = ...
-    DB-->>API: Datos de la persona (score, credit_score_detail)
-    API-->>PWA: 200 OK (PersonDto con creditScore y creditScoreDetail)
-
     alt Si company.settings.features.risk_scoring === true
+        DB-->>API: Datos persona + credit_score + credit_score_detail
+        API-->>PWA: 200 OK (PersonDto con riskScoringEnabled: true, creditScore, creditScoreDetail)
         Note over PWA: PASO 1.5: Tarjeta Informativa de Análisis Crediticio
         PWA-->>A: Muestra Score (0-100), Calificación (A+/A/B/C) y Etiqueta de Riesgo
         Note over PWA: suggested_limit se mantiene en NULL (no se muestra en UI)
@@ -130,6 +270,10 @@ sequenceDiagram
         end
 
         A->>PWA: Clic en botón "Continuar con el Préstamo"
+    else Si company.settings.features.risk_scoring !== true
+        DB-->>API: Datos personales básicos
+        API-->>PWA: 200 OK (PersonDto con riskScoringEnabled: false, sin datos de scoring)
+        Note over PWA: Transición directa e inmediata al Paso 2
     end
 
     Note over A, PWA: PASO 2: Condiciones Contractuales del Crédito
@@ -459,20 +603,22 @@ sequenceDiagram
 
     A->>PWA: Clic en botón "Actualizar Score" (o apertura de evaluación)
     PWA->>API: POST /api/v1/person/:id/recalculate-score (JWT en Authorization header)
-    API->>API: Extrae companyId de req.user (JWT verificado)
-    API->>DB: SELECT settings FROM company WHERE id = :companyId
-    alt Si company.settings.features.risk_scoring !== true
+    API->>API: Extrae companyId y keyToken de req.user (JWT verificado)
+    API->>DB: SELECT status, settings FROM company WHERE id = :companyId AND key_token = :keyToken
+    alt Si empresa no existe, status != 'ACTIVE' o settings.features.risk_scoring !== true
         API-->>PWA: 403 Forbidden ("Su empresa no tiene contratado el servicio de Central de Riesgos")
         PWA-->>A: Notificación de acceso no contratado
     else Empresa autorizada (risk_scoring = true)
         API->>CMD: Ejecuta RecalculatePersonScoreCommand(personId)
-        CMD->>DB: SELECT * FROM loans WHERE id_people = :personId (todos los tenants)
+        Note over CMD,DB: Consolidación On-Demand en tiempo real (Multi-Tenant)
+        CMD->>DB: UPDATE loans SET completed_on_time, early_liquidation_days, extension_days, delay_days, credit_rating WHERE id_people = :personId
+        CMD->>DB: SELECT * FROM loans WHERE id_people = :personId (frescos y consolidados)
         CMD->>CMD: Evalúa mora activa y préstamos liquidados de la persona
         CMD->>CMD: Calcula Pilares: P1 (Historial, 40) + P2 (Activo, 45) + P3 (Riesgo Cruzado, 15)
         CMD->>CMD: score = P1 + P2 + P3 (Rango 0 - 100)
         CMD->>CMD: Construye payload JSONB credit_score_detail
         CMD->>DB: UPDATE people SET credit_score = :score, credit_score_detail = :detail WHERE id = :personId
-        DB-->>CMD: PersonEntity actualizada en < 15 ms
+        DB-->>CMD: PersonEntity y préstamos actualizados en < 15 ms
         CMD-->>API: Result.ok({ creditScore, creditScoreDetail })
         API-->>PWA: 200 OK con DTO completo
         PWA-->>A: Renderiza instantáneamente velocímetro, calificación (A+/A/B/C) y desglose de los 3 pilares
@@ -504,7 +650,9 @@ Mide el cumplimiento diario de los compromisos crediticios actualmente vigentes 
 - **Atraso Moderado (3 a 5 días hábiles de mora):** **20 puntos** (-25 pts).
 - **Atraso Grave (6 a 12 días hábiles de mora):** **10 puntos** (-35 pts).
 - **Mora Crítica (> 12 días hábiles sin pagar):** **0 puntos** en este pilar.
-- **Cliente sin Préstamos Activos:** Recibe los **45 puntos** completos de puntualidad activa.
+- **Cliente sin Préstamos Activos:** Recibe los **45 puntos** completos de puntualidad activa por ausencia total de morosidad en cartera activa. La descripción cualitativa se adapta transparentemente:
+  - *Cliente Nuevo (0 préstamos en total):* `"Sin préstamos activos en curso (no registra deudas pendientes)."`
+  - *Cliente Recurrente (con liquidados pero 0 activos hoy):* `"Sin compromisos activos actualmente; créditos previos 100% cancelados."`
 
 #### Pilar 3: Capacidad de Endeudamiento y Riesgo Cruzado Multi-Tenant (0 a 15 puntos)
 Analiza la exposición simultánea del cliente en una o más empresas prestamistas afiliadas:
@@ -512,7 +660,9 @@ Analiza la exposición simultánea del cliente en una o más empresas prestamist
 - **2 préstamos activos y ambos al día:** **12 puntos** (buena capacidad, mayor volumen).
 - **3 o más préstamos activos simultáneos al día:** **8 puntos** (alerta por sobreendeudamiento).
 - **Mora Cruzada (Préstamo activo en mora en Empresa A mientras opera en Empresa B):** **0 puntos** inmediatos en este pilar (alerta roja de buró).
-- **Sin préstamos activos:** **15 puntos**.
+- **Sin préstamos activos:** Recibe los **15 puntos** completos de capacidad crediticia libre al 100%. La descripción cualitativa indica:
+  - *Cliente Nuevo (0 préstamos):* `"Capacidad crediticia 100% disponible (sin endeudamiento previo)."`
+  - *Cliente Recurrente (0 activos hoy):* `"Línea de crédito 100% disponible; sin operaciones simultáneas activas."`
 
 ---
 

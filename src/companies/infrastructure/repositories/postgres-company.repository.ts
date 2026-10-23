@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { CompanyRepository } from '@companies/domain/repositories/company.repository';
 import { Company } from '@companies/domain/entities/company.entity';
 import { CompanyEntity } from './entities/company.entity';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PostgresCompanyRepository implements CompanyRepository {
@@ -13,6 +14,9 @@ export class PostgresCompanyRepository implements CompanyRepository {
   ) {}
 
   async save(company: Company): Promise<Company> {
+    if (!company.keyToken) {
+      company.keyToken = `cmp_${crypto.randomBytes(12).toString('hex')}`;
+    }
     const entity = this.toEntity(company);
     const saved = await this.typeOrmRepository.save(entity);
     return this.toDomain(saved);
@@ -27,6 +31,12 @@ export class PostgresCompanyRepository implements CompanyRepository {
 
   async findById(id: string): Promise<Company | null> {
     const entity = await this.typeOrmRepository.findOne({ where: { id } });
+    if (!entity) return null;
+    return this.toDomain(entity);
+  }
+
+  async findByIdAndKeyToken(id: string, keyToken: string): Promise<Company | null> {
+    const entity = await this.typeOrmRepository.findOne({ where: { id, keyToken } });
     if (!entity) return null;
     return this.toDomain(entity);
   }
@@ -56,6 +66,10 @@ export class PostgresCompanyRepository implements CompanyRepository {
     if (company.subdomain) {
       entity.subdomain = company.subdomain;
     }
+    if (company.keyToken) {
+      entity.keyToken = company.keyToken;
+    }
+    entity.settings = company.settings || {};
     return entity;
   }
 
@@ -67,6 +81,8 @@ export class PostgresCompanyRepository implements CompanyRepository {
       entity.id,
       entity.label,
       entity.subdomain,
+      entity.keyToken,
+      entity.settings || {},
     );
   }
 }

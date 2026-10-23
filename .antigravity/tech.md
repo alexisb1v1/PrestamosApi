@@ -26,8 +26,25 @@
 - **PostgreSQL** con **TypeORM 0.3**
 - Multi-tenant via subdominio (cada empresa tiene su propio `idCompany`)
 
-### Caché
-- **Redis** con `ioredis` — para sesiones, caché de configuración y tokens
+### Caché y Arquitectura de Redis
+- **Redis** con `ioredis` — para sesiones, Kill-Switch de seguridad, aceleración de autenticación y autorización perimetral de subdominios.
+- **Estrategia Estricta de Namespaces y Convivencia Inter-Proyecto:**
+  Redis actúa como una infraestructura compartida entre varios sistemas del ecosistema (`PrestamosApi`, `VecturaApi`, `verifyDomain`, `Caddy`). Por ello, se definen dos zonas de claves con propósitos y reglas inmutables:
+
+  1. **Namespace Compartido Perimetral (`tenant:<domain>`):**
+     - **Formato:** `tenant:<subdominio>.<dominioBase>` (ejemplo: `tenant:mypes.neocobros.com`).
+     - **Valor:** `"1"` (activo) o no existe (inactivo/revocado).
+     - **TTL:** Persistente (sin expiración).
+     - **Consumidores:** Reverse-proxy **Caddy** (TLS On-Demand) y el microservicio Go [`verifyDomain`](file:///d:/Personal/Repositorios/verifyDomain/README.md).
+     - **Regla de Oro:** **NUNCA RENOMBRAR NI PREFIJAR.** Este formato de clave es un contrato transversal inter-proyecto compartido entre **NeoCobros** (`neocobros.com`) y **NeoRuta / Vectura** (`neoruta.com`). Modificarlo rompe la emisión de certificados SSL y el acceso perimetral de todo el ecosistema.
+     - **Gestión:** `PrestamosApi` escribe o elimina esta clave únicamente al crear, reactivar, renombrar o dar de baja un subdominio de empresa.
+
+  2. **Namespace Privado de NeoCobros (`neocobros:tenant:auth:<companyId>`):**
+     - **Formato jerárquico:** `neocobros:tenant:auth:<companyId>` (organizado en carpetas lógicas para herramientas como RedisInsight).
+     - **Valor:** JSON serializado con el estado de la empresa (`id`, `keyToken`, `status`, `features`).
+     - **TTL:** 10 minutos (600 segundos).
+     - **Consumidores:** Exclusivo de `PrestamosApi` ([`JwtAuthGuard`](file:///d:/Personal/Repositorios/PrestamosApi/src/users/infrastructure/security/jwt-auth.guard.ts)).
+     - **Mecanismo Kill-Switch:** Al modificar el estado de la empresa, suspenderla o actualizar su configuración en PostgreSQL, los handlers de comando ejecutan inmediatamente `redis.del('neocobros:tenant:auth:' + companyId)`. Al milisegundo siguiente, todas las peticiones activas de cobradores y administradores de esa empresa son revocadas con 401 Unauthorized sin tocar otras empresas ni afectar el proxy.
 
 ### Autenticación
 - **JWT** con `@nestjs/jwt`
@@ -121,15 +138,22 @@ features/
 - **Docker** — ambos proyectos contenerizados con `Dockerfile`
 - Variables de entorno por archivo `.env`
 
-### Reverse Proxy y SSL
-- **Caddy** — reverse proxy principal
-- **On-Demand TLS** — certificados SSL automáticos por subdominio
-- **`verifyDomain`** (Go) — micro-API que valida los subdominios antes de emitir el certificado
+### Reverse Proxy y SSL (Caddy + verifyDomain)
+- **Caddy Proxy:** Reverse proxy de borde con separación de dos esquemas de dominios:
+  - **Registro Estático Fijo (`central.neocobros.com`):** Configurado con bloque de servidor fijo en el `Caddyfile`. **NO usa On-Demand TLS ni microservicio**. Es exclusivo del portal administrativo (`OWNER`, `id_company = 0`).
+  - **Subdominios Dinámicos de Tenants (`*.neocobros.com`):** Configurado con `on_demand_tls` delegado al microservicio transversal Go `verifyDomain`.
+- **Microservicio `verifyDomain` (Go):** Intercepta la consulta de Caddy por `subdominio.dominio`:
+  1. Consulta en Redis por la clave persistente `tenant:<subdominio>.<dominio>`.
+  2. Si existe (`"1"`): Responde `200 OK` en $< 1 \text{ ms}$.
+  3. Si no existe (Cache Miss): Ejecuta fallback de auto-curación hacia `PrestamosApi` (`GET /api/v1/company/verify-domain?domain=...`).
+  4. `PrestamosApi` consulta en PostgreSQL (`company`). Si está activa, repuebla Redis con `"1"` y autoriza a Caddy.
+- **Aislamiento de `central`:** `PrestamosApi` no procesa consultas de verificación para `central`, ya que `central` no es una empresa cliente en la base de datos.
 
 ### Multi-tenant
-- Cada empresa accede por su propio subdominio: `empresa.neocobros.com`
+- Cada empresa cliente accede por su propio subdominio: `https://<empresa>.neocobros.com`
 - El backend resuelve el tenant desde el subdominio en cada request
 - El login verifica credenciales cruzadas con la empresa del subdominio
+- El usuario `OWNER` ingresa por `https://central.neocobros.com` con `id_company = 0` (o `NULL`), sin atarse a ningún tenant cliente.
 
 ---
 
