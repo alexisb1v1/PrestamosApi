@@ -70,6 +70,7 @@ export class PostgresCompanyRepository implements CompanyRepository {
       entity.keyToken = company.keyToken;
     }
     entity.settings = company.settings || {};
+    entity.isDemo = company.isDemo ?? false;
     return entity;
   }
 
@@ -83,6 +84,7 @@ export class PostgresCompanyRepository implements CompanyRepository {
       entity.subdomain,
       entity.keyToken,
       entity.settings || {},
+      entity.isDemo ?? false,
     );
   }
 }

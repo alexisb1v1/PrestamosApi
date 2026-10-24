@@ -27,6 +27,9 @@ export class CompanyResponseDto {
   @ApiProperty({ required: false })
   settings?: Record<string, any>;
 
+  @ApiProperty({ required: false })
+  isDemo?: boolean;
+
   constructor(company: CompanyAppDto) {
     this.id = company.id!;
     this.companyName = company.companyName;
@@ -48,5 +51,6 @@ export class CompanyResponseDto {
     this.subdomain = company.subdomain;
     this.keyToken = company.keyToken;
     this.settings = company.settings;
+    this.isDemo = company.isDemo;
   }
 }

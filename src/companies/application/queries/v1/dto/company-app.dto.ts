@@ -7,4 +7,5 @@ export class CompanyAppDto {
   subdomain?: string;
   keyToken?: string;
   settings?: Record<string, any>;
+  isDemo?: boolean;
 }

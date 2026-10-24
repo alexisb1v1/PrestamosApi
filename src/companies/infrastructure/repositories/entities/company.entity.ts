@@ -30,4 +30,7 @@ export class CompanyEntity {
 
   @Column({ name: 'settings', type: 'jsonb', nullable: true, default: () => "'{}'" })
   settings?: Record<string, any>;
+
+  @Column({ name: 'is_demo', type: 'boolean', default: false })
+  isDemo: boolean;
 }
