@@ -129,7 +129,10 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         MAX(i.installment_date) AS last_payment_date
       FROM loans l
       LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
-      WHERE l.status = 'Liquidado' AND (l.credit_rating IS NULL OR l.credit_rating = '')
+      LEFT JOIN company c ON c.id = l.id_company
+      WHERE l.status = 'Liquidado' 
+        AND (l.credit_rating IS NULL OR l.credit_rating = '')
+        AND (c.is_demo IS NOT TRUE)
       GROUP BY l.id, l.start_date, l.end_date, l.liquidation_date
     `);
 
@@ -176,7 +179,9 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         MAX(i.installment_date) AS last_payment_date
       FROM loans l
       LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
+      LEFT JOIN company c ON c.id = l.id_company
       WHERE l.status = 'Activo'
+        AND (c.is_demo IS NOT TRUE)
       GROUP BY l.id, l.id_people, l.start_date, l.end_date, l.amount, l.interest, l.fee
     `);
 
@@ -305,7 +310,10 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         MAX(i.installment_date) AS last_payment_date
       FROM loans l
       LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
-      WHERE l.id_people = $1 AND l.status = 'Liquidado'
+      LEFT JOIN company c ON c.id = l.id_company
+      WHERE l.id_people = $1 
+        AND l.status = 'Liquidado'
+        AND (c.is_demo IS NOT TRUE)
       GROUP BY l.id, l.start_date, l.end_date, l.liquidation_date`,
       [pId],
     );
@@ -353,7 +361,10 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         MAX(i.installment_date) AS last_payment_date
       FROM loans l
       LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
-      WHERE l.id_people = $1 AND l.status = 'Activo'
+      LEFT JOIN company c ON c.id = l.id_company
+      WHERE l.id_people = $1 
+        AND l.status = 'Activo'
+        AND (c.is_demo IS NOT TRUE)
       GROUP BY l.id, l.id_people, l.start_date, l.end_date, l.amount, l.interest, l.fee`,
       [pId],
     );
@@ -445,7 +456,7 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
     // 0. Consolidar primero en tiempo real los préstamos de esta persona en la tabla `loans`
     await this.consolidateLoansForPerson(pId);
 
-    // 1. Obtener todos los préstamos del prestatario en todos los tenants (frescos y consolidados)
+    // 1. Obtener todos los préstamos del prestatario en todos los tenants (frescos y consolidados, excluyendo empresas demo)
     const loans = await this.dataSource.query(
       `SELECT 
         l.id,
@@ -465,7 +476,10 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         COALESCE(SUM(i.amount), 0) AS total_paid
       FROM loans l
       LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
-      WHERE l.id_people = $1 AND l.status != 'Eliminado'
+      LEFT JOIN company c ON c.id = l.id_company
+      WHERE l.id_people = $1 
+        AND l.status != 'Eliminado'
+        AND (c.is_demo IS NOT TRUE)
       GROUP BY l.id, l.id_company, l.status, l.amount, l.interest, l.fee, l.start_date, l.end_date, l.liquidation_date, l.completed_on_time, l.early_liquidation_days, l.extension_days, l.delay_days, l.credit_rating`,
       [pId],
     );

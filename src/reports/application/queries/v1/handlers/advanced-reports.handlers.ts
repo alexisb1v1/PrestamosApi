@@ -276,11 +276,13 @@ export class GetClientHealthReportHandler implements IQueryHandler<GetClientHeal
 
     const loans = await this.dataSource.query(`
       SELECT 
-        id, amount, interest, fee, status, start_date, created_at,
-        (SELECT COALESCE(SUM(amount), 0) FROM loan_installments p WHERE p.loan_id = loans.id) as total_paid
-      FROM loans 
-      WHERE id_people = $1
-      ORDER BY created_at DESC
+        l.id, l.amount, l.interest, l.fee, l.status, l.start_date, l.created_at,
+        (SELECT COALESCE(SUM(amount), 0) FROM loan_installments p WHERE p.loan_id = l.id) as total_paid
+      FROM loans l
+      LEFT JOIN company c ON c.id = l.id_company
+      WHERE l.id_people = $1
+        AND (c.is_demo IS NOT TRUE)
+      ORDER BY l.created_at DESC
     `, [query.personId]);
 
     const score = Number(person.credit_score || 100);
