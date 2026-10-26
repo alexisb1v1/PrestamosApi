@@ -35,7 +35,7 @@ export class PostgresUserRepository implements UserRepository {
           subdomain
         }
       },
-      relations: ['company']
+      relations: { company: true },
     });
     if (!entity) return null;
     return this.toDomain(entity);
@@ -52,7 +52,7 @@ export class PostgresUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     const entity = await this.typeOrmRepository.findOne({
       where: { id },
-      relations: ['person'],
+      relations: { person: true },
     });
     if (!entity) return null;
     return this.toDomain(entity);
@@ -84,7 +84,7 @@ export class PostgresUserRepository implements UserRepository {
       where.idCompany = idCompany.toString();
     }
     const entities = await this.typeOrmRepository.find({
-      relations: ['person'],
+      relations: { person: true },
       where,
     });
     return entities.map((entity) => this.toDomain(entity));

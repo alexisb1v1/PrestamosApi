@@ -58,7 +58,7 @@ export class PostgresLoanRepository implements LoanRepository {
   async findAll(): Promise<Loan[]> {
     const entities = await this.typeOrmRepository.find({
       where: { status: Not('Eliminado') },
-      relations: ['person', 'user'],
+      relations: { person: true, user: true },
     });
     return entities.map((entity) => this.toDomain(entity));
   }
@@ -66,7 +66,7 @@ export class PostgresLoanRepository implements LoanRepository {
   async findById(id: string): Promise<Loan | null> {
     const entity = await this.typeOrmRepository.findOne({
       where: { id },
-      relations: ['person', 'user'],
+      relations: { person: true, user: true },
     });
 
     if (!entity) return null;
@@ -182,7 +182,13 @@ export class PostgresLoanRepository implements LoanRepository {
   async findWithInstallments(id: string): Promise<Loan | null> {
     const entity = await this.typeOrmRepository.findOne({
       where: { id },
-      relations: ['person', 'user', 'installments', 'installments.user'],
+      relations: {
+        person: true,
+        user: true,
+        installments: {
+          user: true,
+        },
+      },
     });
 
     if (!entity) return null;
