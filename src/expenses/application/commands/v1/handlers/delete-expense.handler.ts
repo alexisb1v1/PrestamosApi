@@ -32,7 +32,7 @@ export class DeleteExpenseHandler implements ICommandHandler<
     const expense = await this.repository.findById(expenseId);
 
     if (!expense) {
-      return err('NOT_FOUND');
+      return err('EXPENSE_NOT_FOUND');
     }
 
     const expenseToDelete = new Expense(
@@ -41,7 +41,10 @@ export class DeleteExpenseHandler implements ICommandHandler<
       expense.userId,
       expense.expenseDate,
       'ELIMINADO',
+      expense.companyId,
       expense.id,
+      expense.userName,
+      expense.userFullName,
     );
 
     await this.repository.save(expenseToDelete);

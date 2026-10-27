@@ -3,5 +3,7 @@ export class RegisterExpenseCommand {
     public readonly description: string,
     public readonly amount: number,
     public readonly userId: string,
+    public readonly companyId?: string,
   ) {}
 }
+

@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsPositive,
   IsString,
   MaxLength,
@@ -27,4 +28,14 @@ export class RegisterExpenseRequestDto {
   @IsNotEmpty()
   @IsString()
   userId: string;
+
+  @ApiProperty({
+    example: '102',
+    description: 'ID de la empresa (opcional, si no se envía se infiere del usuario)',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  companyId?: string;
 }
+

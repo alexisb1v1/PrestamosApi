@@ -194,21 +194,26 @@ export class PostgresLoanRepository implements LoanRepository {
     if (!entity) return null;
 
     const loan = this.toDomain(entity);
+    let installmentsSum = 0;
     if (entity.installments) {
       loan.installments = entity.installments.map(
-        (inst) =>
-          new LoanInstallment(
+        (inst) => {
+          const amount = Number(inst.amount);
+          installmentsSum += amount;
+          return new LoanInstallment(
             inst.loanId,
             inst.installmentDate,
-            Number(inst.amount),
+            amount,
             inst.userId,
             inst.status,
             inst.id,
             inst.user?.username,
             inst.paymentType,
-          ),
+          );
+        },
       );
     }
+    loan.remainingAmount = Math.max(0, loan.amount + loan.interest - installmentsSum);
 
     return loan;
   }
@@ -407,7 +412,6 @@ export class PostgresLoanRepository implements LoanRepository {
       .createQueryBuilder()
       .select('COALESCE(SUM(expense.amount), 0)', 'totalExpenses')
       .from('expenses', 'expense')
-      .leftJoin('user', 'u', 'expense.user_id = u.id')
       .where(
         `expense.expense_date >= ${todayStartSql} AND expense.expense_date < ${todayEndSql}`,
       )
@@ -417,7 +421,7 @@ export class PostgresLoanRepository implements LoanRepository {
       expensesQb.andWhere('expense.user_id = :userId', { userId });
     }
     if (companyId) {
-      expensesQb.andWhere('u.id_company = :companyId', { companyId });
+      expensesQb.andWhere('expense.id_company = :companyId', { companyId });
     }
 
     const expensesRaw = await expensesQb.getRawOne<DashboardExpensesRaw>();

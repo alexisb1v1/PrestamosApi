@@ -29,7 +29,14 @@ export class RegisterExpenseAction {
     const result = await this.commandBus.execute<
       RegisterExpenseCommand,
       Result<string, AppError>
-    >(new RegisterExpenseCommand(dto.description, dto.amount, dto.userId));
+    >(
+      new RegisterExpenseCommand(
+        dto.description,
+        dto.amount,
+        dto.userId,
+        dto.companyId,
+      ),
+    );
     return matchResult(result, (id) => ({
       id,
       message: 'Gasto registrado correctamente',

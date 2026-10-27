@@ -427,30 +427,51 @@ sequenceDiagram
 
 ---
 
-## 5. Registro de Gastos Operativos de Ruta
+## 5. Gestión y Consulta de Gastos Operativos de Ruta (Multi-Tenant)
 
-Los cobradores declaran los gastos incurridos en su jornada de trabajo (combustible, viáticos, repuestos) directamente desde la calle.
+Los cobradores declaran los egresos operativos incurridos en su jornada de trabajo (combustible, viáticos, repuestos) directamente desde la aplicación web o móvil. La plataforma garantiza la trazabilidad del usuario registrador y el aislamiento estricto por empresa mediante la columna directa e indexada `id_company`.
 
 ### Diagrama de Secuencia
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor C as Cobrador en Ruta
-    participant PWA as PWA Móvil (Módulo Gastos)
-    participant API as ExpensesController (RegisterExpenseAction)
-    participant CMD as RegisterExpenseCommand / Handler
-    participant DB as PostgreSQL (expenses, user)
+    actor C as Cobrador / Administrador
+    participant PWA as Prestamos (Módulo Gastos / CreateExpenseModal)
+    participant API as ExpenseController (RegisterExpenseAction / ListExpensesAction)
+    participant BUS as CommandBus / QueryBus
+    participant DB as PostgreSQL (expenses, user, people, company)
 
-    C->>PWA: Ingresa concepto ("Gasolina moto") y monto (S/ 15.00)
-    PWA->>API: POST /v1/expenses (descripcion, amount, expenseDate)
-    API->>CMD: Ejecuta RegisterExpenseCommand
-    CMD->>DB: INSERT INTO expenses (user_id, descripcion, amount, expense_date, status='ACTIVE')
-    DB-->>CMD: ExpenseEntity id generado
-    CMD-->>API: Result.ok(ExpenseResponseDto)
-    API-->>PWA: 201 Created
-    PWA-->>C: Actualiza balance neto en tiempo real en la barra superior
+    Note over C,PWA: 1. Registro de Gasto Operativo
+    C->>PWA: Ingresa concepto ("Gasolina moto"), monto (S/ 15.00) y submit
+    PWA->>API: POST /api/v1/expense { description, amount, userId, companyId }
+    API->>BUS: RegisterExpenseCommand(description, amount, userId, companyId)
+    alt companyId no enviado en request
+        BUS->>DB: Busca id_company del usuario en "user"
+        DB-->>BUS: user.id_company
+    end
+    BUS->>DB: INSERT INTO expenses (descripcion, amount, user_id, id_company, expense_date, status='REGISTERED')
+    DB-->>BUS: expense.id generado
+    BUS-->>API: Result.ok(id)
+    API-->>PWA: 201 Created { id, message }
+    PWA-->>C: Notificación de éxito y actualización inmediata de caja
+
+    Note over C,PWA: 2. Consulta y Listado Filtrado de Gastos
+    C->>PWA: Ingresa a /gastos (Filtros: fecha, empresa, cobrador)
+    PWA->>API: GET /api/v1/expense?date=YYYY-MM-DD&companyId=102&userId=15
+    API->>BUS: ListExpensesQuery(userId, date, companyId)
+    BUS->>DB: SELECT e.*, u.username, pe.first_name, pe.last_name FROM expenses e LEFT JOIN "user" u ON e.user_id = u.id LEFT JOIN people pe ON u.id_people = pe.id WHERE e.status != 'ELIMINADO' AND e.id_company = 102
+    DB-->>BUS: Lista de entidades mapeadas
+    BUS-->>API: Result.ok(ExpenseAppDto[])
+    API-->>PWA: 200 OK [ExpenseResponseDto { id, description, amount, companyId, userName, userFullName, expenseDate, status }]
+    PWA-->>C: Renderiza lista con badge de usuario "Por: Alexis Bernaola (@alexis)" y total consolidado
 ```
+
+### Reglas de Negocio y Rendimiento
+- **Aislamiento Indexado Directo (`id_company NOT NULL`):** La tabla `expenses` almacena directamente el tenant al que pertenece el gasto con clave foránea a `company(id)`. Esto elimina joins lentos y subconsultas a la tabla `user` en los reportes de flujo de caja, salud financiera y dashboards analíticos.
+- **Trazabilidad del Usuario Registrador:** Cada gasto almacena `user_id` y en las consultas proyecta `userName` y `userFullName` (`people.first_name` + `people.last_name`), permitiendo auditoría clara de quién efectuó cada salida de dinero tanto en la interfaz web como en la versión móvil.
+- **Reportes Consolidados:** Las consultas de flujo de caja (`GetCashFlowReportHandler`), histórico financiero (`GetFinancialHealthHandler`) y depuración demo (`runDemoCompanyCleanupJob`) filtran gastos directamente con `e.id_company = :companyId` e indexación por `expense_date`.
+
 
 ---
 
@@ -949,7 +970,7 @@ sequenceDiagram
 | **2. Otorgamiento** | `people` (opcional), `loans`, `user` | `people`, `company`, `user` | Cálculo de cuota (`fee`), inserción en `collection_order`. |
 | **3. Abono de Cuota** | `loan_installments`, `loans` | `loans`, `loan_installments` | Acumulador de pagos, liquidación automática si saldo $\le 0$, cálculo y sellado de indicadores de mora/anticipación en `loans`. |
 | **4. Enlace Ficha** | - | `loans` (Generación) / `loans`, `company`, `loan_installments` (Consulta) | Subdominio en memoria (0 DB hit al generar), Token AES-256-GCM y pantalla de agradecimiento. |
-| **5. Gastos** | `expenses` | `user` | Declaración de egresos con deducción de saldo en caja. |
+| **5. Gastos** | `expenses` | `company`, `user`, `people` | Declaración de egresos con `id_company` obligatorio indexado, deducción de caja y proyección del usuario registrador. |
 | **6. Cierre de Día** | `user` (`is_day_closed`) | `loan_installments`, `expenses` | Balance neto = Bruto - Gastos, bloqueo de operaciones. |
 | **7. Reordenar Ruta** | `user` (`collection_order`) | `user`, `loans` | Persistencia de array JSONB de préstamos en secuencia óptima. |
 | **8. Central de Riesgos** | `loans` (Cierre 11 PM), `people` (`credit_score`, `detail`) | `loans`, `people` | Doble ventana de crons nocturnos (Cierre 11 PM + Score 1 AM) y recálculo a demanda On-Demand (`POST /v1/people/:id/recalculate-score` en < 15 ms). |

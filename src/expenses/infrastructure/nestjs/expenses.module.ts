@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsersModule } from '@users/infrastructure/nestjs/users.module';
 import { RegisterExpenseHandler } from '@expenses/application/commands/v1/handlers/register-expense.handler';
 import { DeleteExpenseHandler } from '@expenses/application/commands/v1/handlers/delete-expense.handler';
 import { ListExpensesHandler } from '@expenses/application/queries/v1/handlers/list-expenses.handler';
@@ -12,7 +13,11 @@ import { ListExpensesAction } from '@expenses/interfaces/http/v1/expense/actions
 import { DeleteExpenseAction } from '@expenses/interfaces/http/v1/expense/actions/delete-expense.action';
 
 @Module({
-  imports: [CqrsModule, TypeOrmModule.forFeature([ExpenseEntity])],
+  imports: [
+    CqrsModule,
+    TypeOrmModule.forFeature([ExpenseEntity]),
+    UsersModule,
+  ],
   controllers: [RegisterExpenseAction, ListExpensesAction, DeleteExpenseAction],
   providers: [
     RegisterExpenseHandler,

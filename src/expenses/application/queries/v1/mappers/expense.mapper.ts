@@ -8,8 +8,11 @@ export class ExpenseMapper {
       description: expense.description,
       amount: expense.amount,
       userId: expense.userId,
+      companyId: expense.companyId,
       expenseDate: expense.expenseDate,
       status: expense.status,
+      userName: expense.userName,
+      userFullName: expense.userFullName,
     };
   }
 }

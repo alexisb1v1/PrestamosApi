@@ -15,6 +15,15 @@ export class ExpenseResponseDto {
   userId: string;
 
   @ApiProperty()
+  companyId: string;
+
+  @ApiProperty({ required: false })
+  userName?: string;
+
+  @ApiProperty({ required: false })
+  userFullName?: string;
+
+  @ApiProperty()
   expenseDate: Date;
 
   @ApiProperty()
@@ -25,7 +34,11 @@ export class ExpenseResponseDto {
     this.description = expense.description;
     this.amount = expense.amount;
     this.userId = expense.userId;
+    this.companyId = expense.companyId;
+    this.userName = expense.userName;
+    this.userFullName = expense.userFullName;
     this.expenseDate = expense.expenseDate;
     this.status = expense.status;
   }
 }
+

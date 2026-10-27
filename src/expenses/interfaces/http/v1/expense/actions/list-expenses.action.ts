@@ -24,6 +24,7 @@ export class ListExpensesAction {
   @ApiOperation({ summary: 'List expenses with optional filters' })
   @ApiQuery({ name: 'userId', required: false })
   @ApiQuery({ name: 'date', required: false, type: Date })
+  @ApiQuery({ name: 'companyId', required: false })
   @ApiResponse({
     status: 200,
     description: 'List of expenses.',
@@ -32,11 +33,18 @@ export class ListExpensesAction {
   async execute(
     @Query('userId') userId?: string,
     @Query('date') date?: Date,
+    @Query('companyId') companyId?: string,
   ): Promise<ExpenseResponseDto[]> {
     const result = await this.queryBus.execute<
       ListExpensesQuery,
       Result<ExpenseAppDto[], AppError>
-    >(new ListExpensesQuery(userId, date ? new Date(date) : undefined));
+    >(
+      new ListExpensesQuery(
+        userId,
+        date ? new Date(date) : undefined,
+        companyId,
+      ),
+    );
     return matchResult(result, (expenses) =>
       expenses.map((e) => new ExpenseResponseDto(e)),
     );

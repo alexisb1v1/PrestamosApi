@@ -119,6 +119,11 @@ export const ERROR_CODES = {
     errorCode: 'EXP_001',
     message: 'El gasto solicitado no existe',
   },
+  EXPENSE_COMPANY_REQUIRED: {
+    statusCode: 400,
+    errorCode: 'EXP_002',
+    message: 'El usuario no tiene una empresa asignada para registrar el gasto',
+  },
 } as const;
 
 export type AppError = keyof typeof ERROR_CODES;

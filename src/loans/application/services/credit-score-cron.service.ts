@@ -979,13 +979,11 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         loansDeleted = deleteLoansRes[1] || 0;
       }
 
-      // 4. Borrar gastos de usuarios pertenecientes a la empresa demo con antigüedad > daysThreshold días
+      // 4. Borrar gastos de la empresa demo con antigüedad > daysThreshold días
       const deleteExpensesRes = await this.dataSource.query(
         `DELETE FROM expenses 
          WHERE expense_date < (CURRENT_TIMESTAMP - ($2 || ' days')::INTERVAL)
-           AND user_id IN (
-             SELECT id FROM "user" WHERE id_company = $1
-           )`,
+           AND id_company = $1`,
         [targetCompanyId, daysThreshold],
       );
       const expensesDeleted = deleteExpensesRes[1] || 0;

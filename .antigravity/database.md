@@ -12,6 +12,7 @@
 erDiagram
     company ||--o{ user : "emplea / tiene"
     company ||--o{ loans : "otorga (tenant)"
+    company ||--o{ expenses : "pertenece (tenant)"
     people ||--o| user : "identifica credenciales"
     people ||--o{ loans : "prestatario / cliente"
     user ||--o{ loans : "crea / administra cobro"
@@ -93,6 +94,7 @@ erDiagram
         varchar descripcion
         numeric amount
         bigint user_id FK
+        bigint id_company FK
         timestamp expense_date
         varchar status
     }
@@ -310,8 +312,16 @@ Registro de egresos operativos diarios incurridos por el cobrador en ruta (gasol
 | `descripcion` | `VARCHAR(200)` | `NOT NULL` | | | Detalle o motivo del gasto reportado. |
 | `amount` | `NUMERIC(12,2)` | `NOT NULL` | | | Importe desembolsado en el gasto. |
 | `user_id` | `BIGINT` | `NOT NULL` | **FK** -> `user.id` | | Cobrador o usuario que realizó el gasto. |
+| `id_company` | `BIGINT` | `NOT NULL` | **FK** -> `company.id` | | Empresa / Tenant dueña del gasto operativo. |
 | `expense_date` | `TIMESTAMP` | `NOT NULL` | | | Fecha y hora en que se efectuó el gasto. |
-| `status` | `VARCHAR(15)` | `NOT NULL` | | | Estado del registro de gasto (`ACTIVE`, `VOID`). |
+| `status` | `VARCHAR(15)` | `NOT NULL` | | | Estado del registro de gasto (`REGISTERED`, `ELIMINADO`). |
+
+#### Índices de Rendimiento:
+```sql
+CREATE INDEX IF NOT EXISTS idx_expenses_id_company ON expenses(id_company);
+CREATE INDEX IF NOT EXISTS idx_expenses_expense_date ON expenses(expense_date);
+CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses(user_id);
+```
 
 ---
 
@@ -361,7 +371,7 @@ CREATE INDEX IF NOT EXISTS idx_cron_executions_started_at ON cron_executions(sta
 1. **Precisión de Identificadores (`BIGINT` como `string`):**  
    Todas las claves primarias y foráneas numéricas son de tipo `BIGINT` en PostgreSQL y se mapean como `string` en TypeScript para prevenir problemas de desbordamiento de enteros (Safe Integer Limit de JavaScript: $2^{53} - 1$).
 2. **Aislamiento Multi-Tenant:**  
-   Las tablas `user` y `loans` contienen `id_company` para garantizar que las consultas filtren estrictamente los datos de la empresa correspondiente al subdominio activo.
+   Las tablas `user`, `loans` y `expenses` contienen `id_company` para garantizar que las consultas filtren estrictamente los datos de la empresa correspondiente al subdominio activo de forma indexada directa, sin incurrir en joins o subconsultas redundantes a la tabla `user`.
 3. **Cálculos Financieros:**  
    - `Total a Pagar` = `loans.amount` + `loans.interest`
    - `Saldo Pendiente` = `(loans.amount + loans.interest)` - `SUM(loan_installments.amount WHERE status = 'ACTIVE')`

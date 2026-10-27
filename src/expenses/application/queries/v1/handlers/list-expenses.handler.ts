@@ -29,8 +29,8 @@ export class ListExpensesHandler implements IQueryHandler<
   async execute(
     query: ListExpensesQuery,
   ): Promise<Result<ExpenseAppDto[], AppError>> {
-    const { userId, date } = query;
-    const expenses = await this.repository.findAll(userId, date);
+    const { userId, date, companyId } = query;
+    const expenses = await this.repository.findAll(userId, date, companyId);
     return ok(expenses.map((e) => ExpenseMapper.toAppDto(e)));
   }
 }

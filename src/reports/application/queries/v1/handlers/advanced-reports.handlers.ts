@@ -29,8 +29,12 @@ export class GetConsolidatedReportHandler implements IQueryHandler<GetConsolidat
       params.push(companyId);
     }
     
-    let expensesQuery = `SELECT COALESCE(SUM(amount), 0) as total_expenses FROM expenses WHERE expense_date BETWEEN $1 AND $2`;
+    let expensesQuery = `SELECT COALESCE(SUM(amount), 0) as total_expenses FROM expenses WHERE expense_date BETWEEN $1 AND $2 AND status != 'ELIMINADO'`;
     const expParams: any[] = [startDate, endDate];
+    if (companyId) {
+      expensesQuery += ` AND id_company = $3`;
+      expParams.push(companyId);
+    }
 
     let dailyQueryStr = `
       SELECT 
@@ -88,7 +92,7 @@ export class GetCollectorReportHandler implements IQueryHandler<GetCollectorRepo
     const { startDate, endDate, companyId, userId } = query;
     let queryStr = `
       SELECT 
-        MAX(u.id) as user_id,
+        u.id as user_id,
         pe.id as person_id,
         pe.first_name,
         pe.last_name,
@@ -99,7 +103,7 @@ export class GetCollectorReportHandler implements IQueryHandler<GetCollectorRepo
         COALESCE(SUM(p.amount), 0) as total_collected,
         COALESCE(SUM(CASE WHEN UPPER(p.payment_type) = 'EFECTIVO' THEN p.amount ELSE 0 END), 0) as cash_collected,
         COALESCE(SUM(CASE WHEN UPPER(p.payment_type) != 'EFECTIVO' THEN p.amount ELSE 0 END), 0) as digital_collected,
-        (SELECT COALESCE(SUM(amount), 0) FROM expenses e WHERE e.user_id IN (SELECT id FROM "user" WHERE id_people = pe.id) AND e.expense_date BETWEEN $1 AND $2) as gastos_ruta
+        (SELECT COALESCE(SUM(amount), 0) FROM expenses e WHERE e.user_id = u.id AND e.status != 'ELIMINADO' AND e.expense_date BETWEEN $1 AND $2 ${companyId ? 'AND e.id_company = $3' : ''}) as gastos_ruta
       FROM loan_installments p
       JOIN "user" u ON p.user_id = u.id
       JOIN people pe ON u.id_people = pe.id
@@ -120,7 +124,7 @@ export class GetCollectorReportHandler implements IQueryHandler<GetCollectorRepo
       params.push(userId);
     }
 
-    queryStr += ` GROUP BY pe.id, pe.first_name, pe.last_name, pe.document_number`;
+    queryStr += ` GROUP BY u.id, pe.id, pe.first_name, pe.last_name, pe.document_number`;
 
     const rawData = await this.dataSource.query(queryStr, params);
 
@@ -150,7 +154,7 @@ export class GetCollectorReportHandler implements IQueryHandler<GetCollectorRepo
             to_char(expense_date, 'YYYY-MM-DD') as date,
             COALESCE(SUM(amount), 0) as amount
           FROM expenses
-          WHERE expense_date BETWEEN $1 AND $2 AND user_id = $3
+          WHERE expense_date BETWEEN $1 AND $2 AND user_id = $3 AND status != 'ELIMINADO'
           GROUP BY to_char(expense_date, 'YYYY-MM-DD')
         `;
         const dailyExpRaw = await this.dataSource.query(dailyExpQueryStr, [startDate, endDate, uid]);
@@ -216,7 +220,7 @@ export class GetCollectorReportHandler implements IQueryHandler<GetCollectorRepo
             e.expense_date as date,
             e.descripcion as desc
           FROM expenses e
-          WHERE e.expense_date BETWEEN $1 AND $2 AND e.user_id = $3
+          WHERE e.expense_date BETWEEN $1 AND $2 AND e.user_id = $3 AND e.status != 'ELIMINADO'
         `;
         const expensesRaw = await this.dataSource.query(recentExpensesStr, [startDate, endDate, uid]);
         const mappedExpenses = expensesRaw.map((e: any) => ({
@@ -380,7 +384,7 @@ export class GetCapitalInvestmentReportHandler implements IQueryHandler<GetCapit
     if (companyId) {
       histLentQuery += ` AND id_company = $1`;
       histPayQuery += ` AND l.id_company = $1`;
-      histExpQuery += ` AND e.user_id IN (SELECT id FROM "user" WHERE id_company = $1)`;
+      histExpQuery += ` AND e.id_company = $1`;
       histParams.push(companyId);
     }
 
@@ -436,7 +440,8 @@ export class GetCapitalInvestmentReportHandler implements IQueryHandler<GetCapit
           DATE_TRUNC('month', e.expense_date) as m_date,
           COALESCE(SUM(e.amount), 0) as total_expenses
         FROM expenses e
-        ${companyId ? 'JOIN "user" u ON e.user_id = u.id WHERE u.id_company = $2' : ''}
+        WHERE e.status != 'ELIMINADO'
+        ${companyId ? 'AND e.id_company = $2' : ''}
         GROUP BY DATE_TRUNC('month', e.expense_date)
       )
       SELECT 
