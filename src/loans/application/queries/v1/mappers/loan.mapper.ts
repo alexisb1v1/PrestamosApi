@@ -10,6 +10,7 @@ export class LoanMapper {
       endDate: loan.endDate,
       amount: loan.amount,
       interest: loan.interest,
+      interestRate: loan.interestRate,
       fee: loan.fee,
       days: loan.days,
       createdAt: loan.createdAt,

@@ -38,6 +38,8 @@ export class CreateLoanHandler implements ICommandHandler<
       address,
       phone,
       days: requestedDays,
+      userProfile,
+      companySettings,
     } = command;
 
     // 0. Validar que no tenga préstamo activo
@@ -49,18 +51,40 @@ export class CreateLoanHandler implements ICommandHandler<
       return err('LOAN_ALREADY_ACTIVE');
     }
 
-    // 1. Regla de negocio: mínimo 24 días
-    if (requestedDays < 24) {
+    // 1. Obtener políticas de préstamo del tenant
+    const defaultDays = Number(companySettings?.loans?.defaultDays ?? 24);
+    const defaultInterestRate = Number(companySettings?.loans?.defaultInterestRate ?? 20);
+    const allowCollectorOverride =
+      companySettings?.loans?.allowCollectorOverrideOver1000 ?? true;
+
+    // 2. Determinar días contractuales según rol y política de la empresa
+    const isCobrador = userProfile?.toUpperCase() === 'COBRADOR';
+    let days = defaultDays;
+
+    if (isCobrador) {
+      if (!allowCollectorOverride || amount < 1000) {
+        // Bloqueo estricto: cobrador forzado a los días base de la empresa
+        days = defaultDays;
+      } else {
+        // Monto >= 1000 y empresa permite excepción al cobrador
+        days = requestedDays >= defaultDays ? requestedDays : defaultDays;
+      }
+    } else {
+      // Perfiles Administrador / Owner
+      days = requestedDays >= defaultDays ? requestedDays : defaultDays;
+    }
+
+    if (days < defaultDays) {
       return err('LOAN_INVALID_DAYS');
     }
 
-    // 2. Cálculos
-    const interest = amount * 0.2;
+    // 3. Cálculos de interés con la tasa oficial pactada de la empresa
+    const interestRate = defaultInterestRate;
+    const interest = amount * (interestRate / 100);
     const totalAmount = amount + interest;
-    const days = amount < 1000 ? 24 : requestedDays;
     const fee = totalAmount / days;
 
-    // 3. Fecha de inicio (mañana, sin domingo)
+    // 4. Fecha de inicio (mañana, sin domingo)
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
     startDate.setDate(startDate.getDate() + 1);
@@ -68,7 +92,7 @@ export class CreateLoanHandler implements ICommandHandler<
       startDate.setDate(startDate.getDate() + 1);
     }
 
-    // 4. Fecha de fin (días hábiles, sin domingos)
+    // 5. Fecha de fin (días hábiles, sin domingos)
     const endDate = new Date(startDate);
     let workDaysAdded = startDate.getDay() !== 0 ? 1 : 0;
     while (workDaysAdded < days) {
@@ -94,6 +118,7 @@ export class CreateLoanHandler implements ICommandHandler<
       undefined,
       command.companyId,
     );
+    newLoan.interestRate = interestRate;
 
     const savedLoan = await this.loanRepository.save(newLoan);
     return ok(savedLoan);

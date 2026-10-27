@@ -14,6 +14,8 @@ Este documento constituye la fuente de verdad arquitectónica sobre los procesos
 6. [Cierre Diario de Caja y Cuadre de Cobrador](#6-cierre-diario-de-caja-y-cuadre-de-cobrador)
 7. [Reordenamiento Dinámico de la Ruta de Cobranza](#7-reordenamiento-dinámico-de-la-ruta-de-cobranza)
 8. [Motor de Central de Riesgos: Doble Ventana de Crons y Recálculo a Demanda (On-Demand)](#8-motor-de-central-de-riesgos-doble-ventana-de-crons-y-recálculo-a-demanda-on-demand)
+9. [Módulo de Reportes Financieros y Evolución del Capital e Inversión (MoM)](#9-módulo-de-reportes-financieros-y-evolución-del-capital-e-inversión-mom)
+11. [Protección de Usuarios Demo contra Eliminación](#11-protección-de-usuarios-demo-contra-eliminación)
 
 ---
 
@@ -278,9 +280,11 @@ sequenceDiagram
 
     Note over A, PWA: PASO 2: Condiciones Contractuales del Crédito
     A->>PWA: Ingresa Monto, Dirección, Teléfono, Cobrador y Plazo (días)
-    PWA->>API: POST /api/v1/loans (datos de crédito + idPeople)
-    API->>DB: INSERT INTO loans (id_people, id_company, user_id, amount, interest, fee, days, start_date, end_date)
-    DB-->>API: LoanEntity creado
+    PWA->>API: POST /api/v1/loan (datos de crédito + idPeople + JWT)
+    API->>API: Valida pertenencia de tenant y rol de usuario con claims del JWT
+    API->>API: Aplica settings de empresa (defaultDays, defaultInterestRate, allowCollectorOverride)
+    API->>DB: INSERT INTO loans (id_people, id_company, user_id, amount, interest, interest_rate, fee, days, start_date, end_date)
+    DB-->>API: LoanEntity creado con su tasa registrada
     API->>DB: Actualiza collection_order del cobrador asignado
     API-->>PWA: 201 Created
     PWA-->>A: Ficha de préstamo generada y opción de compartir comprobante
@@ -799,6 +803,144 @@ A diferencia del diseño anterior (donde un cron restaba puntos ciegamente cada 
 
 ---
 
+## 9. Módulo de Reportes Financieros y Evolución del Capital e Inversión (MoM)
+
+Proporciona a los propietarios y administradores visibilidad patrimonial profunda sobre el capital total colocado, el capital vivo en calle, la utilidad neta real descontando gastos de operación y la velocidad de crecimiento o decrecimiento mensual (MoM).
+
+### Propósito y Métricas Patrimoniales
+- **Saldo Total en Calle (Deuda Viva Activa):** Total de dinero pendiente de cobro en la calle de todos los préstamos en estado `Activo`. Coincide exactamente con la métrica de *Saldo Por Cobrar* de la vista de préstamos:
+  $$\text{Saldo Total en Calle} = \sum_{\text{activos}} (\text{amount} + \text{interest}) - \sum_{\text{activos}} \text{total\_abonos}$$
+- **Desglose Analítico de la Cartera en Calle:**
+  1. **Capital Propio Pendiente:** El dinero neto del bolsillo del prestamista que aún no ha retornado:
+     $$\text{Capital Propio} = \sum_{\text{activos}} \text{amount} - \sum_{\text{activos}} \left( \text{monto\_cuota} \times \frac{\text{amount}}{\text{amount} + \text{interest}} \right)$$
+  2. **Interés Futuro por Cobrar:** Ganancia bruta futura pactada que ingresará con las cuotas pendientes:
+     $$\text{Interés Futuro} = \text{Saldo Total en Calle} - \text{Capital Propio Pendiente}$$
+- **Ganancia Limpia Acumulada:** Beneficio neto real del negocio que le queda en el bolsillo al dueño, calculado como el interés cobrado acumulado menos todos los gastos operativos de ruta registrados:
+  $$\text{Ganancia Limpia} = \text{Intereses Cobrados} - \text{Gastos de Ruta}$$
+- **Margen de Ganancia Neta sobre Intereses:** Porcentaje de ganancia limpia retenida por cada S/ 100 cobrados de interés tras cubrir los gastos de ruta:
+  $$\text{Margen Neto} = \left( \frac{\text{Ganancia Limpia}}{\text{Intereses Cobrados}} \right) \times 100$$
+- **Total Prestado (La Rueda):** Suma total de todos los préstamos otorgados a lo largo del tiempo (rotación continua del capital prestado y vuelto a prestar).
+- **Capital Devuelto y Salud del Cobro:**
+  $$\text{Porcentaje Cobrado} = \left( \frac{\text{Capital Devuelto a Caja}}{\text{Total Prestado}} \right) \times 100$$
+- **Evolución Mensual (MoM - Month over Month):** Generación de serie temporal por mes (`DATE_TRUNC('month', ...)`):
+  - **Gráfico Interactivo de Barras:** Ordenado cronológicamente ascendente (de izquierda a derecha: más antiguo $\rightarrow$ más reciente) para visualizar tendencias continuas.
+  - **Tabla y Cards de Desglose Mensual:** Ordenadas cronológicamente descendente (del mes actual al más antiguo) para que el prestamista vea primero el mes en curso y baje a los meses pasados.
+  - Capital desembolsado en nuevos créditos y cantidad de operaciones colocadas.
+  - Capital recuperado (amortización de principal) vs interés cobrado.
+  - Gastos operativos del mes declarados por cobradores.
+  - Margen neto mensual (intereses - gastos).
+  - Tasa de crecimiento MoM de colocación: $\left(\frac{\text{Colocado}_m - \text{Colocado}_{m-1}}{\text{Colocado}_{m-1}}\right) \times 100$.
+  - Flujo neto de efectivo mensual: $\text{Recaudo Total} - (\text{Capital Colocado} + \text{Gastos Operativos})$.
+
+### Diagrama de Secuencia
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Administrador / Propietario (PWA)
+    participant C as GetAdvancedReportsAction (HTTP Controller)
+    participant Q as GetCapitalInvestmentReportQuery
+    participant H as GetCapitalInvestmentReportHandler (CQRS)
+    participant DB as PostgreSQL (loans, loan_installments, expenses)
+
+    A->>C: GET /api/v1/report/capital-investment?months=12&companyId={id}
+    C->>Q: new GetCapitalInvestmentReportQuery(months, companyId)
+    C->>H: queryBus.execute(query)
+    H->>DB: 1. Consulta agregada de Cartera Activa (préstamos vivos y capital pendiente)
+    H->>DB: 2. Consulta de acumulados históricos (colocado, recuperado, intereses, gastos)
+    H->>DB: 3. Consulta de serie temporal de meses con WITH generate_series(...)
+    DB-->>H: Resultados tabulares y series agregadas por mes
+    H->>H: Mapeo de meses, cálculo de variación MoM y flujo de caja neto
+    H-->>C: Result.ok({ summary, monthlyEvolution })
+    C-->>A: 200 OK con JSON estructurado
+    A->>A: Renderiza Bento Ribbon, Gráfico interactivo y Tabla cronológica
+```
+
+---
+
+## 10. Mantenimiento y Purga Automática de la Empresa Demo (ID 102)
+
+Para prevenir la saturación de almacenamiento, preservar los índices de base de datos y garantizar un rendimiento óptimo en demostraciones públicas y comerciales de **NeoCobros**, la plataforma cuenta con una rutina automatizada y manual de purga periódica para la empresa **DEMO** (`id_company = 102`).
+
+### Reglas de Depuración y Aislamiento
+1. **Aislamiento Estricto por Tenant:**
+   - La purga se ejecuta **exclusivamente** sobre registros vinculados a la empresa Demo (`id_company = 102`).
+   - El resto de empresas SaaS del sistema están totalmente aisladas e inmunes a este proceso.
+2. **Criterio de Antigüedad Temporal:**
+   - Préstamos creados hace más de **4 días** (`created_at < NOW() - INTERVAL '4 days'`).
+   - Se eliminan de forma atómica en cascada sus cuotas (`loan_installments`) y el préstamo (`loans`).
+   - Gastos (`expenses`) de usuarios de la empresa Demo registrados hace más de **4 días**.
+3. **Auditoría Transaccional:**
+   - Toda ejecución (programada o manual) se registra en `cron_executions` bajo el identificador `DEMO_COMPANY_CLEANUP`.
+   - Se audita el estado (`SUCCESS` / `FAILED`), duración en milisegundos y métricas de registros eliminados (`loansDeleted`, `installmentsDeleted`, `expensesDeleted`).
+
+### Ejecución
+- **Automática (Programada):** Todos los días a las **02:00 AM (02:00 hrs)** mediante `@Cron('0 2 * * *')`.
+- **Manual (A Demanda para OWNER):** Desde el panel de administración técnica (`/configuracion/sistema`) mediante `POST /api/v1/owner/cron/run-demo-cleanup`.
+
+### Diagrama de Secuencia
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor O as Propietario / Cron Runner (NestJS)
+    participant C as TriggerDemoCleanupAction (o Nest Cron)
+    participant S as CreditScoreCronService
+    participant DB as PostgreSQL (loans, installments, expenses, cron_executions)
+
+    Note over O,DB: Disparo Programado (02:00 AM) o Manual vía API
+    O->>C: POST /api/v1/owner/cron/run-demo-cleanup (o Cron Tick)
+    C->>S: runDemoCompanyCleanupJob(triggerType, targetCompanyId=102, daysThreshold=4)
+    S->>DB: Iniciar registro en cron_executions (status='RUNNING', jobName='DEMO_COMPANY_CLEANUP')
+    S->>DB: 1. SELECT id FROM loans WHERE id_company = 102 AND created_at < NOW() - 4 days
+    S->>DB: 2. DELETE FROM loan_installments WHERE loan_id IN (...)
+    S->>DB: 3. DELETE FROM loans WHERE id IN (...)
+    S->>DB: 4. DELETE FROM expenses WHERE user_id IN (SELECT id FROM users WHERE id_company = 102) AND expense_date < NOW() - 4 days
+    DB-->>S: Conteo de préstamos, cuotas y gastos eliminados
+    S->>DB: Actualizar cron_executions (status='SUCCESS', durationMs, details)
+    S-->>C: Resultado auditado { loansDeleted, installmentsDeleted, expensesDeleted, durationMs }
+    C-->>O: 200 OK con confirmación y métricas
+```
+
+---
+
+## 11. Protección de Usuarios Demo contra Eliminación
+
+Los usuarios con ID `9` y `11` son los accesos públicos de la empresa demo. Se comparten con quienes quieren probar el sistema, que pueden usarlo al 100%. Para que nadie deje sin acceso al resto de visitantes, **estos usuarios no pueden eliminarse (desactivarse)**.
+
+- **Backend:** `DeleteUserHandler` tiene la constante `PROTECTED_USER_IDS = ['9', '11']`. Antes de consultar la BD devuelve `Result.err('PROTECTED_USER_CANNOT_BE_DELETED')`, que responde **403 / `USR_008`**.
+- **Frontend:** en `cobradores/page.tsx` el `ConfirmModal` se abre con `confirmDisabled` y un mensaje informativo. `executeAction` tampoco llama al endpoint para esos IDs.
+
+> Para agregar o quitar usuarios protegidos hay que actualizar `PROTECTED_USER_IDS` en **ambos** proyectos.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Admin / Visitante Demo
+    participant PWA as Prestamos (cobradores/page.tsx)
+    participant API as DeleteUserAction
+    participant H as DeleteUserHandler
+    participant DB as PostgreSQL (user)
+
+    A->>PWA: Clic en Eliminar usuario
+    alt ID es 9 u 11 (protegido)
+        PWA-->>A: Modal con botón Eliminar deshabilitado + mensaje
+    else Usuario normal
+        PWA->>API: DELETE /api/v1/user/:userId
+        API->>H: DeleteUserCommand(userId)
+        alt ID protegido (llamada directa a la API)
+            H-->>API: Result.err(PROTECTED_USER_CANNOT_BE_DELETED)
+            API-->>PWA: 403 USR_008
+        else ID no protegido
+            H->>DB: findById + status = 'INACTIVE'
+            H-->>API: Result.ok
+            API-->>PWA: 200 "Usuario desactivado correctamente"
+        end
+    end
+```
+
+---
+
 ## Resumen de Interacciones de Datos por Proceso
 
 | Flujo de Negocio | Entidades Modificadas | Entidades Consultadas | Acciones Críticas |
@@ -811,3 +953,7 @@ A diferencia del diseño anterior (donde un cron restaba puntos ciegamente cada 
 | **6. Cierre de Día** | `user` (`is_day_closed`) | `loan_installments`, `expenses` | Balance neto = Bruto - Gastos, bloqueo de operaciones. |
 | **7. Reordenar Ruta** | `user` (`collection_order`) | `user`, `loans` | Persistencia de array JSONB de préstamos en secuencia óptima. |
 | **8. Central de Riesgos** | `loans` (Cierre 11 PM), `people` (`credit_score`, `detail`) | `loans`, `people` | Doble ventana de crons nocturnos (Cierre 11 PM + Score 1 AM) y recálculo a demanda On-Demand (`POST /v1/people/:id/recalculate-score` en < 15 ms). |
+| **9. Capital e Inversión** | - | `loans`, `loan_installments`, `expenses` | Agregación de cartera activa, ROI acumulado, serie cronológica mensual y variación porcentual MoM. |
+| **10. Purga Entorno Demo** | `loans`, `loan_installments`, `expenses`, `cron_executions` | `loans`, `users` | Eliminación atómica segura de registros > 4 días de antigüedad exclusiva para la empresa 102 a las 02:00 AM o a demanda. |
+| **11. Usuarios Demo Protegidos** | - | - | IDs `9` y `11` bloqueados en `DELETE /api/v1/user/:userId` (403 `USR_008`) y modal deshabilitado en el frontend. |
+

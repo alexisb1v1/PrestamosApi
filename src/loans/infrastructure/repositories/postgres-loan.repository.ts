@@ -223,6 +223,7 @@ export class PostgresLoanRepository implements LoanRepository {
     entity.endDate = loan.endDate;
     entity.amount = loan.amount;
     entity.interest = loan.interest;
+    entity.interestRate = loan.interestRate ?? 20.0;
     entity.fee = loan.fee;
     entity.days = loan.days;
     entity.createdAt = loan.createdAt;
@@ -261,6 +262,7 @@ export class PostgresLoanRepository implements LoanRepository {
       entity.liquidationDate ? new Date(entity.liquidationDate) : undefined,
     );
 
+    loan.interestRate = Number(entity.interestRate ?? 20.0);
     loan.completedOnTime = entity.completedOnTime;
     loan.earlyLiquidationDays = entity.earlyLiquidationDays;
     loan.extensionDays = entity.extensionDays;

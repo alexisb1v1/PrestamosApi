@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CompaniesModule } from '@companies/infrastructure/nestjs/companies.module';
+import { RolesGuard } from '../security/roles.guard';
 import { CreateUserHandler } from '@users/application/commands/v1/handlers/create-user.handler';
 import { CreatePersonHandler } from '@users/application/commands/v1/handlers/create-person.handler';
 import { UpdateUserHandler } from '@users/application/commands/v1/handlers/update-user.handler';
@@ -50,7 +51,7 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
       }),
       inject: [ConfigService],
     }),
-    CompaniesModule,
+    forwardRef(() => CompaniesModule),
   ],
   controllers: [
     LoginAction,
@@ -92,7 +93,8 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
       useClass: JwtAuthGuard,
     },
     DniLookupService,
+    RolesGuard,
   ],
-  exports: [UserRepository, PersonRepository],
+  exports: [UserRepository, PersonRepository, RolesGuard],
 })
 export class UsersModule {}

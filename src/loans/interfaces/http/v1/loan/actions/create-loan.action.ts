@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Req, ForbiddenException } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -31,7 +31,39 @@ export class CreateLoanAction {
     status: 400,
     description: 'Loan already exists or invalid data.',
   })
-  async execute(@Body() dto: CreateLoanDto): Promise<LoanAppDto> {
+  @ApiResponse({
+    status: 403,
+    description: 'No autorizado para operar en otra empresa o usuario.',
+  })
+  async execute(
+    @Body() dto: CreateLoanDto,
+    @Req() req: any,
+  ): Promise<LoanAppDto> {
+    const userProfile = req.user?.profile;
+    const isOwner = userProfile === 'OWNER';
+    const isCobrador = userProfile === 'COBRADOR';
+
+    // Anti-suplantación (BOLA/OWASP API1):
+    // Un cobrador no puede crear préstamos a nombre de otro usuario ni de otra empresa
+    let effectiveUserId = dto.userId;
+    let effectiveCompanyId = dto.companyId || req.user?.companyId;
+
+    if (!isOwner) {
+      if (req.user?.companyId && dto.companyId && String(dto.companyId) !== String(req.user.companyId)) {
+        throw new ForbiddenException('No tiene permisos para crear préstamos en otra empresa.');
+      }
+      effectiveCompanyId = req.user?.companyId;
+
+      if (isCobrador && req.user?.sub && Number(dto.userId) !== Number(req.user.sub)) {
+        throw new ForbiddenException('El cobrador solo puede registrar préstamos asociados a su propia cuenta.');
+      }
+      if (isCobrador && req.user?.sub) {
+        effectiveUserId = Number(req.user.sub);
+      }
+    }
+
+    const companySettings = req.company?.settings;
+
     const result = await this.commandBus.execute<
       CreateLoanCommand,
       Result<Loan, AppError>
@@ -39,11 +71,13 @@ export class CreateLoanAction {
       new CreateLoanCommand(
         dto.idPeople,
         dto.amount,
-        dto.userId,
+        effectiveUserId,
         dto.address,
         dto.phone,
         dto.days,
-        dto.companyId,
+        effectiveCompanyId ? String(effectiveCompanyId) : undefined,
+        userProfile,
+        companySettings,
       ),
     );
     return matchResult(result, (loan) => LoanMapper.toLoanAppDto(loan));

@@ -7,5 +7,7 @@ export class CreateLoanCommand {
     public readonly phone: string,
     public readonly days: number,
     public readonly companyId?: string,
+    public readonly userProfile?: string,
+    public readonly companySettings?: any,
   ) {}
 }

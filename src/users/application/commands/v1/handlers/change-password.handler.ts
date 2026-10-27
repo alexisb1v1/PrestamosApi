@@ -25,6 +25,10 @@ export class ChangePasswordHandler
       return err('USER_NOT_FOUND');
     }
 
+    if (String(user.idCompany) === '102') {
+      return err('DEMO_PASSWORD_CHANGE_BLOCKED');
+    }
+
     const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isMatch) {
       return err('INVALID_CURRENT_PASSWORD');

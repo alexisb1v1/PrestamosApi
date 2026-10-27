@@ -58,10 +58,20 @@ export const ERROR_CODES = {
     errorCode: 'USR_005',
     message: 'La contraseña actual no es correcta',
   },
+  DEMO_PASSWORD_CHANGE_BLOCKED: {
+    statusCode: 403,
+    errorCode: 'USR_007',
+    message: 'Por seguridad, los usuarios de la empresa de demostración no tienen permitido modificar su contraseña',
+  },
   PERSON_DOCUMENT_NOT_FOUND: {
     statusCode: 400,
     errorCode: 'USR_006',
     message: 'No se encontró el documento de identidad de la persona asociada',
+  },
+  PROTECTED_USER_CANNOT_BE_DELETED: {
+    statusCode: 403,
+    errorCode: 'USR_008',
+    message: 'Este usuario está protegido y no puede ser eliminado',
   },
 
   // --- PRÉSTAMOS (LOA) ---

@@ -10,6 +10,7 @@ import {
 import { GetConsolidatedReportQuery } from '@reports/application/queries/v1/get-consolidated-report.query';
 import { GetCollectorReportQuery } from '@reports/application/queries/v1/get-collector-report.query';
 import { GetClientHealthReportQuery } from '@reports/application/queries/v1/get-client-health-report.query';
+import { GetCapitalInvestmentReportQuery } from '@reports/application/queries/v1/get-capital-investment-report.query';
 
 @ApiTags('Report')
 @ApiBearerAuth()
@@ -70,4 +71,19 @@ export class GetAdvancedReportsAction {
   async getClientHealth(@Query('personId') personId: string) {
     return this.queryBus.execute(new GetClientHealthReportQuery(personId));
   }
+
+  @Get('capital-investment')
+  @ApiOperation({ summary: 'Reporte: Evolución del Capital e Inversión Mes a Mes' })
+  @ApiQuery({ name: 'months', required: false, example: 12 })
+  @ApiQuery({ name: 'companyId', required: false })
+  async getCapitalInvestment(
+    @Query('months') months?: string,
+    @Query('companyId') companyId?: string,
+  ) {
+    const numMonths = months ? Math.min(Math.max(parseInt(months, 10) || 12, 1), 36) : 12;
+    return this.queryBus.execute(
+      new GetCapitalInvestmentReportQuery(numMonths, companyId),
+    );
+  }
 }
+

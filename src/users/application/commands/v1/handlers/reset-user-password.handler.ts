@@ -26,6 +26,10 @@ export class ResetUserPasswordHandler
       return err('USER_NOT_FOUND');
     }
 
+    if (String(user.idCompany) === '102') {
+      return err('DEMO_PASSWORD_CHANGE_BLOCKED');
+    }
+
     let documentNumber = user.person?.documentNumber;
     if (!documentNumber && user.idPeople) {
       const person = await this.personRepository.findById(

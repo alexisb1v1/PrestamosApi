@@ -40,6 +40,14 @@ export class LoanEntity {
   @Column('numeric', { precision: 12, scale: 2 })
   interest: number;
 
+  @Column('numeric', {
+    name: 'interest_rate',
+    precision: 5,
+    scale: 2,
+    default: 20.0,
+  })
+  interestRate: number;
+
   @Column('numeric', { precision: 12, scale: 2 })
   fee: number;
 

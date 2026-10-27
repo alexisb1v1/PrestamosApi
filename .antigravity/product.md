@@ -34,9 +34,17 @@ Permite a los cobradores declarar al instante cualquier egreso de caja realizado
 Control total sobre los movimientos financieros del día, asegurando que el dinero recaudado cuadre con lo reportado en el sistema, descontando los gastos operativos.
 - **Visión General:** KPIs consolidados (cobro bruto, gastos, balance neto, eficiencia vs meta) con vistas desktop y mobile optimizadas.
 - **Reporte por Cobrador:** Desglose diario de actividad, tabla de pagos y gastos paginada con búsqueda, y cierre de liquidación por cobrador.
+- **Evolución del Capital e Inversión:** Métricas patrimoniales avanzadas (capital activo en calle, utilidad neta real acumulada, ROI de cartera) y análisis evolutivo mensual cronológico (MoM) con comparativa de colocación, recupero, margen y flujo neto de caja.
+
 
 ### 5. Indicadores Semáforo (Riesgo y Estado)
 Visualización rápida del estado de los préstamos (al día, atrasados, zonas seguras), permitiendo tomar decisiones informadas sobre a quién cobrar primero o qué créditos refinanciar.
+
+### 6. Tareas Programadas y Mantenimiento de Entorno Demo
+Rutinas automatizadas para mantener la integridad financiera y el rendimiento del SaaS:
+- **Cierre Diario Masivo (23:00 hrs):** Consolidación de saldos, cálculo de morosidad y auditoría de transacciones en `cron_executions`.
+- **Cálculo de Score Crediticio (01:00 hrs):** Evaluación algorítmica de prestatarios.
+- **Purga de Entorno Demo (02:00 hrs):** Limpieza automática de préstamos, cuotas y gastos de prueba con más de 4 días de antigüedad exclusiva para la empresa `DEMO` (ID 102), con opción de ejecución manual a demanda para el Propietario en `/configuracion/sistema`.
 
 ## Arquitectura y Ecosistema
 NeoCobros opera mediante una arquitectura multi-tenant (multi-cliente), lo que permite que diferentes empresas de préstamos usen la plataforma bajo sus propios subdominios personalizados (ej. `cliente1.neocobros.com`).

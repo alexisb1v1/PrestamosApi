@@ -63,10 +63,63 @@ export interface ScoreDetailPayload {
 export class CreditScoreCronService implements OnApplicationBootstrap {
   private readonly logger = new Logger(CreditScoreCronService.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) { }
 
-  onApplicationBootstrap() {
+  async onApplicationBootstrap() {
+    await this.ensureCronTableExists();
     this.scheduleNightlyJobs();
+  }
+
+  /**
+   * Garantiza que la tabla de auditoría cron_executions exista en PostgreSQL.
+   */
+  async ensureCronTableExists(): Promise<void> {
+    try {
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS cron_executions (
+          id BIGSERIAL PRIMARY KEY,
+          job_name VARCHAR(100) NOT NULL,
+          trigger_type VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',
+          status VARCHAR(20) NOT NULL,
+          started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          finished_at TIMESTAMP WITH TIME ZONE NULL,
+          duration_ms INT NULL,
+          liquidated_processed INT DEFAULT 0,
+          active_processed INT DEFAULT 0,
+          total_processed INT DEFAULT 0,
+          error_message TEXT NULL,
+          details JSONB NULL
+        );
+      `);
+    } catch (err) {
+      this.logger.error('Error asegurando tabla cron_executions', err);
+    }
+  }
+
+  /**
+   * Obtiene el historial de ejecuciones de cron ordenado descendente.
+   */
+  async getCronExecutions(limit = 30): Promise<any[]> {
+    await this.ensureCronTableExists();
+    return await this.dataSource.query(
+      `SELECT 
+        id,
+        job_name AS "jobName",
+        trigger_type AS "triggerType",
+        status,
+        started_at AS "startedAt",
+        finished_at AS "finishedAt",
+        duration_ms AS "durationMs",
+        liquidated_processed AS "liquidatedProcessed",
+        active_processed AS "activeProcessed",
+        total_processed AS "totalProcessed",
+        error_message AS "errorMessage",
+        details
+      FROM cron_executions 
+      ORDER BY started_at DESC 
+      LIMIT $1`,
+      [limit],
+    );
   }
 
   /**
@@ -84,7 +137,7 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
       if (hours === 23 && minutes === 0) {
         try {
           this.logger.log('Iniciando Cron 23:00 - Cierre Diario de Préstamos Activos...');
-          await this.runDailyLoansClosingJob();
+          await this.runDailyLoansClosingJob('SCHEDULED');
           this.logger.log('Cron 23:00 - Cierre Diario de Préstamos finalizado.');
         } catch (err) {
           this.logger.error('Error en Cron 23:00 (Cierre de Préstamos)', err);
@@ -101,6 +154,17 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
           this.logger.error('Error en Cron 01:00 (Central de Riesgos)', err);
         }
       }
+
+      // Ventana 3: 02:00 (2:00 AM) - Limpieza y purga periódica de la empresa DEMO (ID 102)
+      if (hours === 2 && minutes === 0) {
+        try {
+          this.logger.log('Iniciando Cron 02:00 - Limpieza y purga de cartera Demo (ID 102)...');
+          await this.runDemoCompanyCleanupJob('SCHEDULED', 102, 4);
+          this.logger.log('Cron 02:00 - Limpieza de empresa Demo finalizada exitosamente.');
+        } catch (err) {
+          this.logger.error('Error en Cron 02:00 (Limpieza Demo 102)', err);
+        }
+      }
     }, 60 * 1000); // Revisa cada 1 minuto
   }
 
@@ -115,12 +179,33 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
    *
    * Procesa tanto créditos liquidados históricos/pendientes como créditos activos.
    */
-  async runDailyLoansClosingJob(): Promise<{ liquidatedProcessed: number; activeProcessed: number }> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  async runDailyLoansClosingJob(
+    triggerType: 'SCHEDULED' | 'MANUAL' = 'SCHEDULED',
+  ): Promise<{
+    executionId: string;
+    status: string;
+    durationMs: number;
+    liquidatedProcessed: number;
+    activeProcessed: number;
+    totalProcessed: number;
+  }> {
+    await this.ensureCronTableExists();
+    const startTime = Date.now();
 
-    // 1. Backfill y consolidación de préstamos liquidados sin calificación crediticia
-    const liquidatedLoans = await this.dataSource.query(`
+    const insertRes = await this.dataSource.query(
+      `INSERT INTO cron_executions (job_name, trigger_type, status, started_at) 
+       VALUES ($1, $2, 'RUNNING', NOW()) 
+       RETURNING id`,
+      ['DAILY_LOANS_CLOSING', triggerType],
+    );
+    const executionId = insertRes[0]?.id;
+
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // 1. Backfill y consolidación de préstamos liquidados sin calificación crediticia
+      const liquidatedLoans = await this.dataSource.query(`
       SELECT 
         l.id,
         l.start_date,
@@ -128,24 +213,23 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         l.liquidation_date,
         MAX(i.installment_date) AS last_payment_date
       FROM loans l
-      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
+      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'PAID'
       LEFT JOIN company c ON c.id = l.id_company
       WHERE l.status = 'Liquidado' 
-        AND (l.credit_rating IS NULL OR l.credit_rating = '')
         AND (c.is_demo IS NOT TRUE)
       GROUP BY l.id, l.start_date, l.end_date, l.liquidation_date
     `);
 
-    for (const loan of liquidatedLoans) {
-      const liqDate = loan.liquidation_date || loan.last_payment_date || loan.end_date;
-      const indicators = calculateLoanLiquidationIndicators(
-        loan.start_date,
-        loan.end_date,
-        liqDate,
-      );
+      for (const loan of liquidatedLoans) {
+        const liqDate = loan.liquidation_date || loan.last_payment_date || loan.end_date;
+        const indicators = calculateLoanLiquidationIndicators(
+          loan.start_date,
+          loan.end_date,
+          liqDate,
+        );
 
-      await this.dataSource.query(
-        `UPDATE loans 
+        await this.dataSource.query(
+          `UPDATE loans 
          SET completed_on_time = $1,
              early_liquidation_days = $2,
              extension_days = $3,
@@ -153,20 +237,20 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
              credit_rating = $5,
              liquidation_date = COALESCE(liquidation_date, $6)
          WHERE id = $7`,
-        [
-          indicators.completedOnTime,
-          indicators.earlyLiquidationDays,
-          indicators.extensionDays,
-          indicators.delayDays,
-          indicators.creditRating,
-          liqDate,
-          loan.id,
-        ],
-      );
-    }
+          [
+            indicators.completedOnTime,
+            indicators.earlyLiquidationDays,
+            indicators.extensionDays,
+            indicators.delayDays,
+            indicators.creditRating,
+            liqDate,
+            loan.id,
+          ],
+        );
+      }
 
-    // 2. Procesamiento de préstamos activos
-    const activeLoans = await this.dataSource.query(`
+      // 2. Procesamiento de préstamos activos
+      const activeLoans = await this.dataSource.query(`
       SELECT 
         l.id,
         l.id_people,
@@ -178,28 +262,28 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         COALESCE(SUM(i.amount), 0) AS total_paid,
         MAX(i.installment_date) AS last_payment_date
       FROM loans l
-      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
+      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'PAID'
       LEFT JOIN company c ON c.id = l.id_company
       WHERE l.status = 'Activo'
         AND (c.is_demo IS NOT TRUE)
       GROUP BY l.id, l.id_people, l.start_date, l.end_date, l.amount, l.interest, l.fee
     `);
 
-    for (const loan of activeLoans) {
-      const totalLoan = Number(loan.amount) + Number(loan.interest);
-      const totalPaid = Number(loan.total_paid) || 0;
+      for (const loan of activeLoans) {
+        const totalLoan = Number(loan.amount) + Number(loan.interest);
+        const totalPaid = Number(loan.total_paid) || 0;
 
-      // 2.1 Si ya pagó la totalidad, liquidar formalmente
-      if (totalPaid >= totalLoan) {
-        const liqDate = loan.last_payment_date || today;
-        const indicators = calculateLoanLiquidationIndicators(
-          loan.start_date,
-          loan.end_date,
-          liqDate,
-        );
+        // 2.1 Si ya pagó la totalidad, liquidar formalmente
+        if (totalPaid >= totalLoan) {
+          const liqDate = loan.last_payment_date || today;
+          const indicators = calculateLoanLiquidationIndicators(
+            loan.start_date,
+            loan.end_date,
+            liqDate,
+          );
 
-        await this.dataSource.query(
-          `UPDATE loans 
+          await this.dataSource.query(
+            `UPDATE loans 
            SET status = 'Liquidado',
                liquidation_date = $1,
                completed_on_time = $2,
@@ -208,67 +292,124 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
                delay_days = $5,
                credit_rating = $6
            WHERE id = $7`,
-          [
-            liqDate,
-            indicators.completedOnTime,
-            indicators.earlyLiquidationDays,
-            indicators.extensionDays,
-            indicators.delayDays,
-            indicators.creditRating,
-            loan.id,
-          ],
-        );
-        continue;
-      }
+            [
+              liqDate,
+              indicators.completedOnTime,
+              indicators.earlyLiquidationDays,
+              indicators.extensionDays,
+              indicators.delayDays,
+              indicators.creditRating,
+              loan.id,
+            ],
+          );
+          continue;
+        }
 
-      // 2.2 Préstamo continúa activo con saldo pendiente
-      const workdaysDue = countWorkdaysDue(loan.start_date, today);
-      const fee = Number(loan.fee) || 1;
-      const paidInstallments = totalPaid / fee;
-      const delayDays = Math.max(0, Math.floor(workdaysDue - paidInstallments));
+        // 2.2 Préstamo continúa activo con saldo pendiente
+        const contractEndDate = new Date(loan.end_date);
+        contractEndDate.setHours(0, 0, 0, 0);
 
-      const contractEndDate = new Date(loan.end_date);
-      contractEndDate.setHours(0, 0, 0, 0);
+        const isOverdueContract = contractEndDate < today;
+        const extensionDays = isOverdueContract ? countWorkdaysBetween(loan.end_date, today) : 0;
+        const completedOnTime = false;
+        const earlyLiquidationDays = 0;
 
-      const isOverdueContract = contractEndDate < today;
-      const extensionDays = isOverdueContract ? countWorkdaysBetween(loan.end_date, today) : 0;
-      const completedOnTime = false;
-      const earlyLiquidationDays = 0;
+        const fee = Number(loan.fee) || 1;
+        const remainingAmount = Math.max(0, totalLoan - totalPaid);
+        const remainingInstallments = Math.ceil(remainingAmount / fee);
 
-      let creditRating: 'A' | 'B' | 'C' = 'A';
-      if (delayDays > 3 || extensionDays > 3) {
-        creditRating = 'C';
-      } else if (delayDays > 0 || extensionDays > 0) {
-        creditRating = 'B';
-      }
+        let delayDays = 0;
+        if (isOverdueContract) {
+          // Fuera de plazo contractual: el retraso en cuotas es exactamente el saldo de cuotas impagas
+          delayDays = remainingInstallments;
+        } else {
+          // En curso: evaluar cuotas exigibles a la fecha menos lo amortizado
+          const workdaysDue = countWorkdaysDue(loan.start_date, today);
+          const paidInstallments = totalPaid / fee;
+          delayDays = Math.max(0, Math.min(remainingInstallments, Math.floor(workdaysDue - paidInstallments)));
+        }
 
-      await this.dataSource.query(
-        `UPDATE loans 
+        let creditRating: 'A' | 'B' | 'C' = 'A';
+        if (delayDays > 3 || extensionDays > 3) {
+          creditRating = 'C';
+        } else if (delayDays > 0 || extensionDays > 0) {
+          creditRating = 'B';
+        }
+
+        await this.dataSource.query(
+          `UPDATE loans 
          SET completed_on_time = $1,
              early_liquidation_days = $2,
              extension_days = $3,
              delay_days = $4,
              credit_rating = $5
          WHERE id = $6`,
-        [
-          completedOnTime,
-          earlyLiquidationDays,
-          extensionDays,
-          delayDays,
-          creditRating,
-          loan.id,
-        ],
+          [
+            completedOnTime,
+            earlyLiquidationDays,
+            extensionDays,
+            delayDays,
+            creditRating,
+            loan.id,
+          ],
+        );
+      }
+
+      const durationMs = Date.now() - startTime;
+      const totalProcessed = liquidatedLoans.length + activeLoans.length;
+
+      if (executionId) {
+        await this.dataSource.query(
+          `UPDATE cron_executions 
+           SET 
+             status = 'SUCCESS',
+             finished_at = NOW(),
+             duration_ms = $1,
+             liquidated_processed = $2,
+             active_processed = $3,
+             total_processed = $4
+           WHERE id = $5`,
+          [
+            durationMs,
+            liquidatedLoans.length,
+            activeLoans.length,
+            totalProcessed,
+            executionId,
+          ],
+        );
+      }
+
+      this.logger.log(
+        `[Cron Cierre Diario - ${triggerType}] Liquidados: ${liquidatedLoans.length}, Activos: ${activeLoans.length}, Duración: ${durationMs}ms`,
       );
+
+      return {
+        executionId: String(executionId),
+        status: 'SUCCESS',
+        durationMs,
+        liquidatedProcessed: liquidatedLoans.length,
+        activeProcessed: activeLoans.length,
+        totalProcessed,
+      };
+    } catch (err: any) {
+      const durationMs = Date.now() - startTime;
+      this.logger.error(`Error en Cron Cierre Diario (${triggerType})`, err);
+
+      if (executionId) {
+        await this.dataSource.query(
+          `UPDATE cron_executions 
+           SET 
+             status = 'FAILED',
+             finished_at = NOW(),
+             duration_ms = $1,
+             error_message = $2
+           WHERE id = $3`,
+          [durationMs, err?.message || String(err), executionId],
+        );
+      }
+
+      throw err;
     }
-
-    this.logger.log(
-      `[Cron 23:00 Cierre Diario] Préstamos liquidados consolidados: ${liquidatedLoans.length}, Préstamos activos evaluados: ${activeLoans.length}`,
-    );
-
-    return {
-      liquidatedProcessed: liquidatedLoans.length,
-      activeProcessed: activeLoans.length,
-    };
   }
 
   /**
@@ -309,7 +450,7 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         l.liquidation_date,
         MAX(i.installment_date) AS last_payment_date
       FROM loans l
-      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
+      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'PAID'
       LEFT JOIN company c ON c.id = l.id_company
       WHERE l.id_people = $1 
         AND l.status = 'Liquidado'
@@ -360,7 +501,7 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         COALESCE(SUM(i.amount), 0) AS total_paid,
         MAX(i.installment_date) AS last_payment_date
       FROM loans l
-      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
+      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'PAID'
       LEFT JOIN company c ON c.id = l.id_company
       WHERE l.id_people = $1 
         AND l.status = 'Activo'
@@ -406,11 +547,6 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
       }
 
       // 2.2 Préstamo continúa activo con saldo pendiente
-      const workdaysDue = countWorkdaysDue(loan.start_date, today);
-      const fee = Number(loan.fee) || 1;
-      const paidInstallments = totalPaid / fee;
-      const delayDays = Math.max(0, Math.floor(workdaysDue - paidInstallments));
-
       const contractEndDate = new Date(loan.end_date);
       contractEndDate.setHours(0, 0, 0, 0);
 
@@ -418,6 +554,21 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
       const extensionDays = isOverdueContract ? countWorkdaysBetween(loan.end_date, today) : 0;
       const completedOnTime = false;
       const earlyLiquidationDays = 0;
+
+      const fee = Number(loan.fee) || 1;
+      const remainingAmount = Math.max(0, totalLoan - totalPaid);
+      const remainingInstallments = Math.ceil(remainingAmount / fee);
+
+      let delayDays = 0;
+      if (isOverdueContract) {
+        // Fuera de plazo contractual: el retraso en cuotas es exactamente el saldo de cuotas impagas
+        delayDays = remainingInstallments;
+      } else {
+        // En curso: evaluar cuotas exigibles a la fecha menos lo amortizado
+        const workdaysDue = countWorkdaysDue(loan.start_date, today);
+        const paidInstallments = totalPaid / fee;
+        delayDays = Math.max(0, Math.min(remainingInstallments, Math.floor(workdaysDue - paidInstallments)));
+      }
 
       let creditRating: 'A' | 'B' | 'C' = 'A';
       if (delayDays > 3 || extensionDays > 3) {
@@ -475,7 +626,7 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
         l.credit_rating,
         COALESCE(SUM(i.amount), 0) AS total_paid
       FROM loans l
-      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'ACTIVE'
+      LEFT JOIN loan_installments i ON i.loan_id = l.id AND i.status = 'PAID'
       LEFT JOIN company c ON c.id = l.id_company
       WHERE l.id_people = $1 
         AND l.status != 'Eliminado'
@@ -760,6 +911,151 @@ export class CreditScoreCronService implements OnApplicationBootstrap {
       creditScore: finalScore,
       creditScoreDetail: detailPayload,
     };
+  }
+
+  /**
+   * Ventana 3 (02:00 AM) o a demanda: Limpieza y purga periódica de la empresa DEMO (ID 102).
+   * Elimina cuotas (loan_installments), préstamos (loans) y gastos (expenses)
+   * que tengan más de 4 días de antigüedad para mantener la demo liviana y sin saturación.
+   */
+  async runDemoCompanyCleanupJob(
+    triggerType: 'SCHEDULED' | 'MANUAL' = 'SCHEDULED',
+    targetCompanyId: number = 102,
+    daysThreshold: number = 4,
+  ): Promise<{
+    executionId: string;
+    status: string;
+    durationMs: number;
+    loansDeleted: number;
+    installmentsDeleted: number;
+    expensesDeleted: number;
+    totalProcessed: number;
+  }> {
+    await this.ensureCronTableExists();
+    const startTime = Date.now();
+
+    const insertRes = await this.dataSource.query(
+      `INSERT INTO cron_executions (job_name, trigger_type, status, started_at) 
+       VALUES ($1, $2, 'RUNNING', NOW()) 
+       RETURNING id`,
+      ['DEMO_COMPANY_CLEANUP', triggerType],
+    );
+    const executionId = insertRes[0]?.id;
+
+    try {
+      this.logger.log(
+        `Ejecutando purga demo para Empresa ${targetCompanyId} (registros > ${daysThreshold} días)...`,
+      );
+
+      // 1. Obtener IDs de préstamos antiguos de la empresa demo
+      const loansToPurge = await this.dataSource.query(
+        `SELECT id FROM loans 
+         WHERE id_company = $1 
+           AND (created_at < (CURRENT_DATE - ($2 || ' days')::INTERVAL)
+                OR start_date < (CURRENT_DATE - ($2 || ' days')::INTERVAL))`,
+        [targetCompanyId, daysThreshold],
+      );
+
+      let installmentsDeleted = 0;
+      let loansDeleted = 0;
+
+      if (loansToPurge.length > 0) {
+        const loanIds = loansToPurge.map((r: any) => r.id);
+
+        // 2. Borrar cuotas de dichos préstamos
+        const deleteInstallmentsRes = await this.dataSource.query(
+          `DELETE FROM loan_installments 
+           WHERE loan_id = ANY($1::bigint[])`,
+          [loanIds],
+        );
+        installmentsDeleted = deleteInstallmentsRes[1] || 0;
+
+        // 3. Borrar los préstamos
+        const deleteLoansRes = await this.dataSource.query(
+          `DELETE FROM loans 
+           WHERE id = ANY($1::bigint[])`,
+          [loanIds],
+        );
+        loansDeleted = deleteLoansRes[1] || 0;
+      }
+
+      // 4. Borrar gastos de usuarios pertenecientes a la empresa demo con antigüedad > daysThreshold días
+      const deleteExpensesRes = await this.dataSource.query(
+        `DELETE FROM expenses 
+         WHERE expense_date < (CURRENT_TIMESTAMP - ($2 || ' days')::INTERVAL)
+           AND user_id IN (
+             SELECT id FROM "user" WHERE id_company = $1
+           )`,
+        [targetCompanyId, daysThreshold],
+      );
+      const expensesDeleted = deleteExpensesRes[1] || 0;
+
+      const durationMs = Date.now() - startTime;
+      const totalProcessed = loansDeleted + expensesDeleted;
+
+      const detailsJson = JSON.stringify({
+        companyId: targetCompanyId,
+        daysThreshold,
+        loansDeleted,
+        installmentsDeleted,
+        expensesDeleted,
+      });
+
+      if (executionId) {
+        await this.dataSource.query(
+          `UPDATE cron_executions 
+           SET 
+             status = 'SUCCESS',
+             finished_at = NOW(),
+             duration_ms = $1,
+             liquidated_processed = $2,
+             active_processed = $3,
+             total_processed = $4,
+             details = $5::jsonb
+           WHERE id = $6`,
+          [
+            durationMs,
+            loansDeleted,
+            expensesDeleted,
+            totalProcessed,
+            detailsJson,
+            executionId,
+          ],
+        );
+      }
+
+      this.logger.log(
+        `Purga demo finalizada: ${loansDeleted} préstamos, ${installmentsDeleted} abonos, ${expensesDeleted} gastos eliminados (${durationMs}ms)`,
+      );
+
+      return {
+        executionId,
+        status: 'SUCCESS',
+        durationMs,
+        loansDeleted,
+        installmentsDeleted,
+        expensesDeleted,
+        totalProcessed,
+      };
+    } catch (error: any) {
+      const durationMs = Date.now() - startTime;
+      this.logger.error('Error al ejecutar purga demo:', error);
+
+      if (executionId) {
+        await this.dataSource.query(
+          `UPDATE cron_executions 
+           SET 
+             status = 'FAILED',
+             finished_at = NOW(),
+             duration_ms = $1,
+             error_message = $2
+           WHERE id = $3`,
+          [durationMs, error?.message || 'Error desconocido', executionId],
+        );
+      }
+
+      throw error;
+    }
   }
 }
 

@@ -14,6 +14,9 @@ import { GetDashboardAction } from '@loans/interfaces/http/v1/dashboard/actions/
 import { GenerateShareLinkAction } from '@loans/interfaces/http/v1/loan/actions/generate-share-link.action';
 import { GetPublicLoanDetailsAction } from '@loans/interfaces/http/v1/loan/actions/get-public-loan-details.action';
 import { RecalculatePersonScoreAction } from '@loans/interfaces/http/v1/loan/actions/recalculate-person-score.action';
+import { TriggerDailyClosingAction } from '@loans/interfaces/http/v1/cron/actions/trigger-daily-closing.action';
+import { TriggerDemoCleanupAction } from '@loans/interfaces/http/v1/cron/actions/trigger-demo-cleanup.action';
+import { GetCronExecutionsAction } from '@loans/interfaces/http/v1/cron/actions/get-cron-executions.action';
 // Handlers
 import { CreateLoanHandler } from '@loans/application/commands/v1/handlers/create-loan.handler';
 import { ListLoansHandler } from '@loans/application/queries/v1/handlers/list-loans.handler';
@@ -31,6 +34,7 @@ import { PostgresLoanRepository } from '../repositories/postgres-loan.repository
 import { PostgresLoanInstallmentRepository } from '../repositories/postgres-loan-installment.repository';
 import { LoanEntity } from '../repositories/entities/loan.entity';
 import { LoanInstallmentEntity } from '../repositories/entities/loan-installment.entity';
+import { CronExecutionEntity } from '../repositories/entities/cron-execution.entity';
 import { UsersModule } from '@users/infrastructure/nestjs/users.module';
 import { CompaniesModule } from '@companies/infrastructure/nestjs/companies.module';
 import { RolesGuard } from '@users/infrastructure/security/roles.guard';
@@ -40,7 +44,11 @@ import { CreditScoreCronService } from '@loans/application/services/credit-score
 @Module({
   imports: [
     CqrsModule,
-    TypeOrmModule.forFeature([LoanEntity, LoanInstallmentEntity]),
+    TypeOrmModule.forFeature([
+      LoanEntity,
+      LoanInstallmentEntity,
+      CronExecutionEntity,
+    ]),
     UsersModule,
     CompaniesModule,
   ],
@@ -57,6 +65,9 @@ import { CreditScoreCronService } from '@loans/application/services/credit-score
     GenerateShareLinkAction,
     GetPublicLoanDetailsAction,
     RecalculatePersonScoreAction,
+    TriggerDailyClosingAction,
+    TriggerDemoCleanupAction,
+    GetCronExecutionsAction,
   ],
   providers: [
     CreateLoanHandler,

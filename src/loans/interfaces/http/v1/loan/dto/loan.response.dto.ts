@@ -17,6 +17,9 @@ export class LoanResponseDto {
   @ApiProperty()
   interest: number;
 
+  @ApiProperty({ required: false, description: 'Porcentaje de interés (%) pactado' })
+  interestRate?: number;
+
   @ApiProperty()
   fee: number;
 
@@ -99,6 +102,7 @@ export class LoanResponseDto {
     this.endDate = loan.endDate;
     this.amount = loan.amount;
     this.interest = loan.interest;
+    this.interestRate = loan.interestRate;
     this.fee = loan.fee;
     this.days = loan.days;
     this.createdAt = loan.createdAt;

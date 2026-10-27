@@ -41,11 +41,11 @@ export class CreateLoanDto {
 
   @ApiProperty({
     example: 24,
-    description: 'Loan duration in days (minimum 24)',
+    description: 'Loan duration in days',
     required: true,
   })
   @IsNumber()
-  @Min(24)
+  @Min(1)
   days: number;
 
   @ApiProperty({

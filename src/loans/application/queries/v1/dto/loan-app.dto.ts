@@ -13,6 +13,7 @@ export class LoanAppDto {
   endDate: Date;
   amount: number;
   interest: number;
+  interestRate?: number;
   fee: number;
   days: number;
   createdAt: Date;

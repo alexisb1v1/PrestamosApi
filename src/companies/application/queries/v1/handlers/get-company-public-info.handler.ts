@@ -6,7 +6,7 @@ import { CompanyRepository, CompanyRepositoryToken } from '@companies/domain/rep
 import { AppError } from '@shared/errors/app-errors';
 
 @QueryHandler(GetCompanyPublicInfoQuery)
-export class GetCompanyPublicInfoHandler implements IQueryHandler<GetCompanyPublicInfoQuery, Result<{ companyName: string }, AppError>> {
+export class GetCompanyPublicInfoHandler implements IQueryHandler<GetCompanyPublicInfoQuery, Result<{ companyName: string; branding?: any }, AppError>> {
   private readonly logger = new Logger(GetCompanyPublicInfoHandler.name);
 
   constructor(
@@ -14,7 +14,7 @@ export class GetCompanyPublicInfoHandler implements IQueryHandler<GetCompanyPubl
     private readonly companyRepository: CompanyRepository,
   ) {}
 
-  async execute(query: GetCompanyPublicInfoQuery): Promise<Result<{ companyName: string }, AppError>> {
+  async execute(query: GetCompanyPublicInfoQuery): Promise<Result<{ companyName: string; branding?: any }, AppError>> {
     const { subdomain } = query;
 
     if (!subdomain) {
@@ -31,6 +31,9 @@ export class GetCompanyPublicInfoHandler implements IQueryHandler<GetCompanyPubl
       return err('FORBIDDEN');
     }
 
-    return ok({ companyName: company.companyName });
+    return ok({
+      companyName: company.companyName,
+      branding: company.settings?.branding || null,
+    });
   }
 }

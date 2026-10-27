@@ -63,6 +63,7 @@ erDiagram
         timestamp liquidation_date
         numeric amount
         numeric interest
+        numeric interest_rate
         numeric fee
         int days
         date created_at
@@ -123,9 +124,15 @@ Representa a cada organización o empresa cliente dentro del modelo SaaS multi-t
     "risk_scoring": true,             // Habilita la evaluación previa de Central de Riesgos en el registro de préstamos
     "customer_report": true           // Habilita el reporte integral de salud crediticia por cliente
   },
-  "preferences": {
-    "default_days": 24,
-    "default_interest_rate": 0.20
+  "branding": {
+    "primaryColor": "#4147eb",        // Color primario del sistema (botones, enlaces, badges)
+    "secondaryColor": "#100069",      // Color secundario / fondo oscuro
+    "iconUrl": "data:image/png;base64,..." // Isotipo / ícono personalizado por tenant para sidebar y favicon
+  },
+  "loans": {
+    "defaultDays": 24,                // Días predeterminados de plazo de cobro
+    "defaultInterestRate": 20,        // Tasa de interés base en % (ej. 20%)
+    "allowCollectorOverrideOver1000": true // Flag a demanda: autoriza a cobradores a modificar plazo en montos >= S/ 1,000
   }
 }
 ```
@@ -238,7 +245,7 @@ Gestiona las credenciales de autenticación, roles y pertenencia a empresa para 
 | `id` | `BIGINT` | `NOT NULL` | **PK** (Autoincrement) | `nextval()` | Identificador único del usuario. |
 | `username` | `VARCHAR(50)` | `NOT NULL` | **INDEX** | | Nombre de usuario o identificador de inicio de sesión. |
 | `password_hash` | `VARCHAR(255)` | `NOT NULL` | | | Contraseña hasheada (bcrypt). |
-| `profile` | `VARCHAR(20)` | `NOT NULL` | | | Rol de usuario (`OWNER`, `ADMIN`, `COBRADOR`, `SUPERVISOR`). El `OWNER` es el Superadmin de la plataforma. |
+| `profile` | `VARCHAR(20)` | `NOT NULL` | | | Rol de usuario (`OWNER`, `ADMIN`, `COBRADOR`). El `OWNER` es el Superadmin de la plataforma. |
 | `status` | `VARCHAR(10)` | `NOT NULL` | | | Estado de la cuenta (`ACTIVE`, `INACTIVE`, etc.). |
 | `id_people` | `BIGINT` | `NOT NULL` | **FK** -> `people.id` | | Vinculación a la persona titular de la cuenta. |
 | `is_day_closed` | `BOOLEAN` | `NOT NULL` | | `false` | Indica si el cobrador realizó su cierre diario de caja. |
@@ -261,11 +268,12 @@ Registro central de cada operación crediticia otorgada a un cliente.
 | `liquidation_date` | `TIMESTAMP` | `NULL` | | `NULL` | Fecha y hora exacta en que el préstamo fue liquidado al 100%. |
 | `amount` | `NUMERIC(12,2)` | `NOT NULL` | | | Capital prestado (monto neto desembolsado). |
 | `interest` | `NUMERIC(12,2)` | `NOT NULL` | | | Monto monetario total del interés generado. |
+| `interest_rate` | `NUMERIC(5,2)` | `NOT NULL` | | `20.00` | Porcentaje de interés (%) pactado al momento de otorgar el crédito. |
 | `fee` | `NUMERIC(12,2)` | `NOT NULL` | | | Valor nominal de cada cuota regular periódica. |
 | `days` | `INT` | `NOT NULL` | | `24` | Cantidad total de cuotas / días programados. |
 | `created_at` | `DATE` | `NOT NULL` | | `CURRENT_DATE` | Fecha de registro del crédito en el sistema. |
 | `user_id` | `BIGINT` | `NOT NULL` | **FK** -> `user.id` | | Cobrador o usuario asignado a la gestión del préstamo. |
-| `status` | `VARCHAR(15)` | `NOT NULL` | | `'PENDING'` | Estado del préstamo (`Activo`, `Liquidado`, `Eliminado`). |
+| `status` | `VARCHAR(15)` | `NOT NULL` | | `'Activo'` | Estado del préstamo (`Activo`, `Liquidado`, `Eliminado`). |
 | `address` | `VARCHAR(255)` | `NULL` | | `NULL` | Dirección o domicilio asociado para la cobranza. |
 | `phone` | `VARCHAR(20)` | `NOT NULL` | | `''` | Teléfono de contacto directo del cliente. |
 | `completed_on_time` | `BOOLEAN` | `NOT NULL` | | `false` | Indica si el crédito liquidó en fecha pactada o antes (`extension_days === 0`). |
@@ -286,7 +294,7 @@ Historial transaccional de pagos y amortizaciones aplicadas a un préstamo.
 | `loan_id` | `BIGINT` | `NOT NULL` | **FK** -> `loans.id` | | Préstamo al que se aplica el pago. |
 | `installment_date` | `TIMESTAMP` | `NOT NULL` | | `CURRENT_TIMESTAMP` | Fecha y hora en que se registró el abono. |
 | `amount` | `NUMERIC(12,2)` | `NOT NULL` | | | Monto amortizado en esta transacción. |
-| `status` | `VARCHAR(15)` | `NOT NULL` | | `'ACTIVE'` | Estado del abono (`ACTIVE`, `DELETED`, etc.). |
+| `status` | `VARCHAR(15)` | `NOT NULL` | | `'PAID'` | Estado del abono (`PAID`). |
 | `user_id` | `BIGINT` | `NOT NULL` | **FK** -> `user.id` | | Cobrador o usuario que recibió y procesó el dinero. |
 | `payment_type` | `VARCHAR(10)` | `NULL` | | `NULL` | Medio de pago utilizado (`EFECTIVO`, `YAPE`, `TRANSFERENCIA`). |
 
@@ -304,6 +312,47 @@ Registro de egresos operativos diarios incurridos por el cobrador en ruta (gasol
 | `user_id` | `BIGINT` | `NOT NULL` | **FK** -> `user.id` | | Cobrador o usuario que realizó el gasto. |
 | `expense_date` | `TIMESTAMP` | `NOT NULL` | | | Fecha y hora en que se efectuó el gasto. |
 | `status` | `VARCHAR(15)` | `NOT NULL` | | | Estado del registro de gasto (`ACTIVE`, `VOID`). |
+
+---
+
+### 2.6 Tabla: `cron_executions` (Auditoría de Crons y Cierres Masivos)
+**Entidad TypeORM:** [`CronExecutionEntity`](../src/loans/infrastructure/repositories/entities/cron-execution.entity.ts)  
+Registra la auditoría y trazabilidad de cada ejecución de tareas programadas masivas (cierre diario de cartera y evaluación de mora), sean automáticas (23:00) o a demanda por el perfil OWNER.
+
+| Columna | Tipo PostgreSQL | Nulidad | Clave / Restricción | Default | Descripción |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `id` | `BIGSERIAL` | `NOT NULL` | **PK** (Autoincrement) | `nextval()` | Identificador único de la ejecución. |
+| `job_name` | `VARCHAR(100)` | `NOT NULL` | | | Nombre de la tarea (ej: `DAILY_LOANS_CLOSING`). |
+| `trigger_type` | `VARCHAR(20)` | `NOT NULL` | | `'SCHEDULED'` | Origen del disparo (`SCHEDULED` o `MANUAL`). |
+| `status` | `VARCHAR(20)` | `NOT NULL` | | | Estado de la ejecución (`RUNNING`, `SUCCESS`, `FAILED`). |
+| `started_at` | `TIMESTAMP WITH TIME ZONE` | `NOT NULL` | | `CURRENT_TIMESTAMP` | Fecha y hora de inicio. |
+| `finished_at` | `TIMESTAMP WITH TIME ZONE` | `NULL` | | `NULL` | Fecha y hora de culminación. |
+| `duration_ms` | `INT` | `NULL` | | `NULL` | Tiempo transcurrido en milisegundos. |
+| `liquidated_processed` | `INT` | `NULL` | | `0` | Préstamos liquidados consolidados. |
+| `active_processed` | `INT` | `NULL` | | `0` | Préstamos activos evaluados. |
+| `total_processed` | `INT` | `NULL` | | `0` | Suma de registros actualizados. |
+| `error_message` | `TEXT` | `NULL` | | `NULL` | Traza del mensaje en caso de fallo. |
+| `details` | `JSONB` | `NULL` | | `NULL` | Datos complementarios de la ejecución. |
+
+#### Script SQL DDL de Creación:
+```sql
+CREATE TABLE IF NOT EXISTS cron_executions (
+  id BIGSERIAL PRIMARY KEY,
+  job_name VARCHAR(100) NOT NULL,
+  trigger_type VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',
+  status VARCHAR(20) NOT NULL,
+  started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  finished_at TIMESTAMP WITH TIME ZONE NULL,
+  duration_ms INT NULL,
+  liquidated_processed INT DEFAULT 0,
+  active_processed INT DEFAULT 0,
+  total_processed INT DEFAULT 0,
+  error_message TEXT NULL,
+  details JSONB NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_cron_executions_started_at ON cron_executions(started_at DESC);
+```
 
 ---
 

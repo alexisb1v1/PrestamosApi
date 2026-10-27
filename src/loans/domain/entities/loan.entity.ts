@@ -9,6 +9,7 @@ export class Loan {
   endDate: Date;
   amount: number;
   interest: number;
+  interestRate?: number;
   fee: number;
   days: number;
   createdAt: Date;
