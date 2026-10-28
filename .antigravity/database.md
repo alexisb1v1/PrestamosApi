@@ -176,7 +176,7 @@ Almacena los datos personales civiles de prestatarios (clientes finales) y colab
 | `first_name` | `VARCHAR(50)` | `NOT NULL` | | | Nombres de la persona. |
 | `last_name` | `VARCHAR(50)` | `NOT NULL` | | | Apellidos de la persona. |
 | `birthday` | `DATE` | `NULL` | | `NULL` | Fecha de nacimiento de la persona. |
-| `credit_score` | `INT` | `NOT NULL` | | `100` | Score o puntaje de salud crediticia global (0 a 100). |
+| `credit_score` | `INT` | `NOT NULL` | | `85` | Score o puntaje de salud crediticia global (0 a 100). Valor base neutral para clientes nuevos sin historial. |
 | `credit_score_detail` | `JSONB` | `NULL` | | `NULL` | Desglose explicativo de los 3 pilares del scoring y métricas de soporte (ver estructura detallada abajo). |
 | `suggested_limit` | `DECIMAL(10,2)` | `NULL` | | `NULL` | Reservado para futuras fases (permanece en `NULL` y no se muestra en el análisis de crédito). |
 

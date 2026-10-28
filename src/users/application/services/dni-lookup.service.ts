@@ -39,7 +39,20 @@ export class DniLookupService {
     if (result) {
       try {
         const fullName = `${result.apellidoPaterno} ${result.apellidoMaterno}`.trim();
-        const newPerson = new Person(documentType, documentNumber, result.nombres, fullName, null);
+        const initialDetail = Person.createInitialCreditScoreDetail();
+        const newPerson = new Person(
+          documentType,
+          documentNumber,
+          result.nombres,
+          fullName,
+          null,
+          undefined,
+          undefined,
+          undefined,
+          85,
+          null,
+          initialDetail,
+        );
         
         // Guardamos y retornamos la entidad recuperada de la BD para asegurar que tenga el ID
         await this.personRepository.save(newPerson);

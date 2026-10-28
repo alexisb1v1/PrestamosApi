@@ -68,9 +68,9 @@ export class PostgresPersonRepository implements PersonRepository {
     entity.firstName = person.firstName;
     entity.lastName = person.lastName;
     entity.birthday = person.birthday;
-    entity.creditScore = person.creditScore ?? 100;
+    entity.creditScore = person.creditScore ?? 85;
     entity.suggestedLimit = person.suggestedLimit ?? null;
-    entity.creditScoreDetail = person.creditScoreDetail ?? null;
+    entity.creditScoreDetail = person.creditScoreDetail ?? Person.createInitialCreditScoreDetail();
     return entity;
   }
 
