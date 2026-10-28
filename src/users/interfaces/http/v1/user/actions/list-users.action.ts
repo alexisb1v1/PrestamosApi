@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Req } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -30,13 +30,22 @@ export class ListUsersAction {
     type: [UserResponseDto],
   })
   async execute(
+    @Req() req: any,
     @Query('username') username?: string,
     @Query('idCompany') idCompany?: number,
   ): Promise<UserResponseDto[]> {
+    const isOwner = req.user?.profile === 'OWNER';
+    let effectiveCompanyId = idCompany;
+
+    // Aislamiento multi-tenant (OWASP BOLA / API1): No-owners solo ven usuarios de su empresa
+    if (!isOwner) {
+      effectiveCompanyId = req.user?.companyId ? Number(req.user.companyId) : undefined;
+    }
+
     const result = await this.queryBus.execute<
       ListUsersQuery,
       Result<UserAppDto[], AppError>
-    >(new ListUsersQuery(username, idCompany));
+    >(new ListUsersQuery(username, effectiveCompanyId));
     return matchResult(result, (users) =>
       users.map((u) => new UserResponseDto(u)),
     );
