@@ -54,13 +54,23 @@ export class SyncPersonAction {
 
     await personRepo.save(person);
 
+    const fullClientName = `${person.firstName} ${person.lastName}`.trim();
+
     return {
       success: true,
       message: 'Datos de RENIEC sincronizados correctamente.',
+      data: {
+        documentNumber: person.documentNumber,
+        firstName: person.firstName,
+        lastName: person.lastName,
+        fullName: fullClientName,
+        isSynced: true,
+      },
       person: {
         documentNumber: person.documentNumber,
         firstName: person.firstName,
         lastName: person.lastName,
+        fullName: fullClientName,
         isSynced: true,
       },
     };

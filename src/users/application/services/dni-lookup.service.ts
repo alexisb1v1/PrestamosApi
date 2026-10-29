@@ -88,11 +88,12 @@ export class DniLookupService {
         timeout: 5000,
       });
 
-      if (response.data && response.data.nombres) {
+      const data = response.data;
+      if (data && (data.first_name || data.nombres)) {
         return {
-          nombres: response.data.nombres,
-          apellidoPaterno: response.data.apellidoPaterno || response.data.apellido_paterno || '',
-          apellidoMaterno: response.data.apellidoMaterno || response.data.apellido_materno || '',
+          nombres: data.first_name || data.nombres,
+          apellidoPaterno: data.first_last_name || data.apellidoPaterno || data.apellido_paterno || '',
+          apellidoMaterno: data.second_last_name || data.apellidoMaterno || data.apellido_materno || '',
         };
       }
     } catch (err) {
@@ -145,11 +146,12 @@ export class DniLookupService {
         timeout: 5000,
       });
 
-      if (response.data && response.data.nombres) {
+      const data = response.data?.data || response.data;
+      if (data && (data.nombres || data.nombre)) {
         return {
-          nombres: response.data.nombres,
-          apellidoPaterno: response.data.apellidoPaterno || response.data.apellido_paterno || '',
-          apellidoMaterno: response.data.apellidoMaterno || response.data.apellido_materno || '',
+          nombres: data.nombres || data.nombre,
+          apellidoPaterno: data.apellido_paterno || data.apellidoPaterno || '',
+          apellidoMaterno: data.apellido_materno || data.apellidoMaterno || '',
         };
       }
     } catch (err) {
