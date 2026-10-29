@@ -21,6 +21,7 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
       status: installment.status,
       installmentDate: installment.installmentDate,
       paymentType: installment.paymentType,
+      isMigrated: installment.isMigrated ?? false,
     });
 
     const saved = await this.repository.save(entity);
@@ -44,6 +45,8 @@ export class PostgresLoanInstallmentRepository implements LoanInstallmentReposit
           entity.id,
           undefined, // userName
           entity.paymentType,
+          undefined, // loan
+          entity.isMigrated,
         ),
     );
   }

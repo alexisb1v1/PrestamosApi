@@ -17,6 +17,8 @@ import { RecalculatePersonScoreAction } from '@loans/interfaces/http/v1/loan/act
 import { TriggerDailyClosingAction } from '@loans/interfaces/http/v1/cron/actions/trigger-daily-closing.action';
 import { TriggerDemoCleanupAction } from '@loans/interfaces/http/v1/cron/actions/trigger-demo-cleanup.action';
 import { GetCronExecutionsAction } from '@loans/interfaces/http/v1/cron/actions/get-cron-executions.action';
+import { LoanMigrationAction } from '@loans/interfaces/http/v1/migration/actions/loan-migration.action';
+import { LoanMigrationService } from '@loans/application/services/loan-migration.service';
 // Handlers
 import { CreateLoanHandler } from '@loans/application/commands/v1/handlers/create-loan.handler';
 import { ListLoansHandler } from '@loans/application/queries/v1/handlers/list-loans.handler';
@@ -68,8 +70,10 @@ import { CreditScoreCronService } from '@loans/application/services/credit-score
     TriggerDailyClosingAction,
     TriggerDemoCleanupAction,
     GetCronExecutionsAction,
+    LoanMigrationAction,
   ],
   providers: [
+    LoanMigrationService,
     CreateLoanHandler,
     ListLoansHandler,
     RegisterLoanInstallmentHandler,

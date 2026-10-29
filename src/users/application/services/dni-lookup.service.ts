@@ -19,21 +19,27 @@ export class DniLookupService {
   ) {}
 
   /**
+   * Consulta las APIs externas en cadena sin alterar directamente la base de datos.
+   */
+  async lookupExternal(dni: string): Promise<DniLookupResult | null> {
+    let result = await this.searchDecolecta(dni);
+    if (!result) {
+      result = await this.searchApiPeruDev(dni);
+    }
+    if (!result) {
+      result = await this.searchFactiliza(dni);
+    }
+    return result;
+  }
+
+  /**
    * Busca un documento en proveedores externos en cadena.
    * Si lo encuentra, crea la entidad Person, la guarda en BD (Caché) y la retorna.
    * NOTA: La búsqueda local ya la realiza el handler previamente.
    */
   async findDni(documentType: string, documentNumber: string): Promise<Person | null> {
     // Iniciamos la cadena de búsqueda en APIs externas
-    let result = await this.searchDecolecta(documentNumber);
-    
-    if (!result) {
-      result = await this.searchApiPeruDev(documentNumber);
-    }
-    
-    if (!result) {
-      result = await this.searchFactiliza(documentNumber);
-    }
+    const result = await this.lookupExternal(documentNumber);
 
     // Si lo encontró en alguna API, lo guardamos en caché (BD) y retornamos la entidad Person
     if (result) {

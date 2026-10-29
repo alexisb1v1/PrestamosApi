@@ -11,5 +11,6 @@ export class FindPersonResponseDto {
   suggestedLimit?: number | null;
   creditScoreDetail?: Record<string, any> | null;
   riskScoringEnabled?: boolean;
+  isSynced?: boolean;
 }
 

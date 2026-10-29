@@ -37,6 +37,7 @@ export class LoanMapper {
         ? `${loan.user.person.firstName} ${loan.user.person.lastName}`
         : loan.user?.username,
       companyId: loan.user?.idCompany,
+      isPersonSynced: loan.person?.isSynced ?? true,
       installments: loan.installments?.map((inst) => ({
         id: inst.id || '',
         date: inst.installmentDate,

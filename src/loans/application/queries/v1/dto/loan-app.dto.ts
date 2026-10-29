@@ -40,6 +40,7 @@ export class LoanAppDto {
   collectorName?: string;
   collectorDocumentNumber?: string;
   companyId?: string;
+  isPersonSynced?: boolean;
 
   installments?: InstallmentAppDto[];
 }

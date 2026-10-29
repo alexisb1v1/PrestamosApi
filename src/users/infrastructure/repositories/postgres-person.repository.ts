@@ -71,6 +71,7 @@ export class PostgresPersonRepository implements PersonRepository {
     entity.creditScore = person.creditScore ?? 85;
     entity.suggestedLimit = person.suggestedLimit ?? null;
     entity.creditScoreDetail = person.creditScoreDetail ?? Person.createInitialCreditScoreDetail();
+    entity.isSynced = person.isSynced ?? true;
     return entity;
   }
 
@@ -87,6 +88,7 @@ export class PostgresPersonRepository implements PersonRepository {
       entity.creditScore,
       entity.suggestedLimit ? Number(entity.suggestedLimit) : null,
       entity.creditScoreDetail,
+      entity.isSynced ?? true,
     );
   }
 }

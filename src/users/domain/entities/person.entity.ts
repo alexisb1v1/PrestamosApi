@@ -10,6 +10,7 @@ export class Person {
   creditScore?: number;
   suggestedLimit?: number | null;
   creditScoreDetail?: Record<string, any> | null;
+  isSynced?: boolean;
 
   constructor(
     documentType: string,
@@ -23,6 +24,7 @@ export class Person {
     creditScore?: number,
     suggestedLimit?: number | null,
     creditScoreDetail?: Record<string, any> | null,
+    isSynced: boolean = true,
   ) {
     this.documentType = documentType;
     this.documentNumber = documentNumber;
@@ -35,6 +37,7 @@ export class Person {
     this.creditScore = creditScore ?? 85;
     this.suggestedLimit = suggestedLimit ?? null;
     this.creditScoreDetail = creditScoreDetail ?? Person.createInitialCreditScoreDetail();
+    this.isSynced = isSynced;
   }
 
   static createInitialCreditScoreDetail(): Record<string, any> {

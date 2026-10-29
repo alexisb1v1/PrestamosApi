@@ -245,6 +245,8 @@ export class PostgresLoanRepository implements LoanRepository {
     entity.extensionDays = loan.extensionDays ?? 0;
     entity.delayDays = loan.delayDays ?? 0;
     entity.creditRating = loan.creditRating ?? null;
+    entity.isMigrated = loan.isMigrated ?? false;
+    entity.migratedAt = loan.migratedAt ?? null;
     return entity;
   }
 
@@ -273,6 +275,8 @@ export class PostgresLoanRepository implements LoanRepository {
     loan.extensionDays = entity.extensionDays;
     loan.delayDays = entity.delayDays;
     loan.creditRating = entity.creditRating;
+    loan.isMigrated = entity.isMigrated;
+    loan.migratedAt = entity.migratedAt ? new Date(entity.migratedAt) : undefined;
 
     if (entity.person) {
       loan.person = new Person(
@@ -282,6 +286,12 @@ export class PostgresLoanRepository implements LoanRepository {
         entity.person.lastName,
         entity.person.birthday ? new Date(entity.person.birthday) : null,
         entity.person.id,
+        undefined,
+        undefined,
+        entity.person.creditScore,
+        entity.person.suggestedLimit,
+        entity.person.creditScoreDetail,
+        entity.person.isSynced ?? true,
       );
     }
 

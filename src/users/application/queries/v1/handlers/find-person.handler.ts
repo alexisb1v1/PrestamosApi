@@ -29,6 +29,20 @@ export class FindPersonHandler implements IQueryHandler<
     );
 
     if (person) {
+      // Si la persona existe pero no estaba sincronizada con Reniec, intentamos sincronizarla en caliente
+      if (
+        person.isSynced === false &&
+        (query.documentType === 'DNI' || query.documentType === '1') &&
+        query.documentNumber.length === 8
+      ) {
+        const reniecData = await this.dniLookupService.lookupExternal(query.documentNumber);
+        if (reniecData && reniecData.nombres) {
+          person.firstName = reniecData.nombres;
+          person.lastName = `${reniecData.apellidoPaterno || ''} ${reniecData.apellidoMaterno || ''}`.trim();
+          person.isSynced = true;
+          await this.personRepository.save(person);
+        }
+      }
       return ok(person);
     }
 

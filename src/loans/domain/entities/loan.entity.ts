@@ -30,6 +30,8 @@ export class Loan {
   extensionDays?: number;
   delayDays?: number;
   creditRating?: string | null;
+  isMigrated?: boolean;
+  migratedAt?: Date;
 
   constructor(
     idPeople: number,

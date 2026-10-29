@@ -47,4 +47,7 @@ export class LoanInstallmentEntity {
     nullable: true,
   })
   paymentType: string;
+
+  @Column({ name: 'is_migrated', type: 'boolean', default: false })
+  isMigrated: boolean;
 }

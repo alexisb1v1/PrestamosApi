@@ -96,6 +96,9 @@ export class LoanResponseDto {
   @ApiProperty({ required: false })
   creditRating?: string | null;
 
+  @ApiProperty({ required: false })
+  isPersonSynced?: boolean;
+
   constructor(loan: LoanAppDto) {
     this.id = loan.id;
     this.startDate = loan.startDate;
@@ -125,6 +128,7 @@ export class LoanResponseDto {
     this.extensionDays = loan.extensionDays;
     this.delayDays = loan.delayDays;
     this.creditRating = loan.creditRating;
+    this.isPersonSynced = loan.isPersonSynced ?? true;
   }
 }
 

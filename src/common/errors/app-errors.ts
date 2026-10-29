@@ -124,6 +124,18 @@ export const ERROR_CODES = {
     errorCode: 'EXP_002',
     message: 'El usuario no tiene una empresa asignada para registrar el gasto',
   },
+
+  // --- MIGRACIÓN DE CARTERA (MIG) ---
+  MIGRATION_FILE_EMPTY: {
+    statusCode: 400,
+    errorCode: 'MIG_001',
+    message: 'El archivo Excel no contiene hojas ni registros válidos',
+  },
+  MIGRATION_EXECUTE_ERROR: {
+    statusCode: 500,
+    errorCode: 'MIG_002',
+    message: 'Error al ejecutar la migración transaccional de cartera',
+  },
 } as const;
 
 export type AppError = keyof typeof ERROR_CODES;

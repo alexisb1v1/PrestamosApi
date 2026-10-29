@@ -49,6 +49,9 @@ export class LoanDetailsResponseDto {
   @ApiProperty({ required: false })
   creditRating?: string | null;
 
+  @ApiProperty({ required: false })
+  isPersonSynced?: boolean;
+
   @ApiProperty({ type: [LoanInstallmentDetailDto] })
   installments: LoanInstallmentDetailDto[];
 
@@ -62,6 +65,7 @@ export class LoanDetailsResponseDto {
     this.extensionDays = loan.extensionDays;
     this.delayDays = loan.delayDays;
     this.creditRating = loan.creditRating;
+    this.isPersonSynced = loan.isPersonSynced ?? true;
     this.installments = (loan.installments || []).map((inst) => ({
       id: inst.id,
       date: inst.date,

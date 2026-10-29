@@ -88,6 +88,12 @@ export class LoanEntity {
   @Column({ name: 'credit_rating', type: 'varchar', length: 5, nullable: true })
   creditRating: string | null;
 
+  @Column({ name: 'is_migrated', type: 'boolean', default: false })
+  isMigrated: boolean;
+
+  @Column({ name: 'migrated_at', type: 'timestamp', nullable: true })
+  migratedAt: Date | null;
+
   @OneToMany(() => LoanInstallmentEntity, (installment) => installment.loan)
   installments: LoanInstallmentEntity[];
 }

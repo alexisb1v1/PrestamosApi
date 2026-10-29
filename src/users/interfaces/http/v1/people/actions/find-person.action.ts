@@ -100,6 +100,7 @@ export class FindPersonAction {
         birthday: birthdayStr,
         phone: person.phone,
         address: person.address,
+        isSynced: person.isSynced ?? true,
         riskScoringEnabled,
         // Solo expone datos de Central de Riesgos si el tenant tiene activo el servicio
         creditScore: riskScoringEnabled ? person.creditScore : undefined,

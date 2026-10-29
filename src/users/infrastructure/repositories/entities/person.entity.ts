@@ -28,5 +28,8 @@ export class PersonEntity {
 
   @Column({ name: 'credit_score_detail', type: 'jsonb', nullable: true })
   creditScoreDetail: Record<string, any> | null;
+
+  @Column({ name: 'is_synced', type: 'boolean', default: true })
+  isSynced: boolean;
 }
 

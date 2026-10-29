@@ -283,6 +283,8 @@ Registro central de cada operación crediticia otorgada a un cliente.
 | `extension_days` | `INT` | `NOT NULL` | | `0` | Días hábiles de prórroga transcurridos fuera del plazo contractual pactado. |
 | `delay_days` | `INT` | `NOT NULL` | | `0` | Días hábiles del cronograma que estuvieron impagos (evaluados hasta la liquidación). |
 | `credit_rating` | `VARCHAR(5)` | `NULL` | | `NULL` | Calificación crediticia final del préstamo (`A+`, `A`, `B`, `C`). |
+| `is_migrated` | `BOOLEAN` | `NOT NULL` | | `false` | Indica si el préstamo proviene de una carga masiva/migración externa de cartera. |
+| `migrated_at` | `TIMESTAMP` | `NULL` | | `NULL` | Fecha y hora en que se ejecutó la importación masiva del préstamo. |
 
 ---
 
@@ -298,7 +300,8 @@ Historial transaccional de pagos y amortizaciones aplicadas a un préstamo.
 | `amount` | `NUMERIC(12,2)` | `NOT NULL` | | | Monto amortizado en esta transacción. |
 | `status` | `VARCHAR(15)` | `NOT NULL` | | `'PAID'` | Estado del abono (`PAID`). |
 | `user_id` | `BIGINT` | `NOT NULL` | **FK** -> `user.id` | | Cobrador o usuario que recibió y procesó el dinero. |
-| `payment_type` | `VARCHAR(10)` | `NULL` | | `NULL` | Medio de pago utilizado (`EFECTIVO`, `YAPE`, `TRANSFERENCIA`). |
+| `payment_type` | `VARCHAR(10)` | `NULL` | | `NULL` | Medio de pago utilizado (`EFECTIVO`, `YAPE`). |
+| `is_migrated` | `BOOLEAN` | `NOT NULL` | | `false` | Flag que indica si el abono fue migrado históricamente (excluido de arqueos de caja diarios activos). |
 
 ---
 

@@ -16,6 +16,8 @@ Este documento constituye la fuente de verdad arquitectónica sobre los procesos
 8. [Motor de Central de Riesgos: Doble Ventana de Crons y Recálculo a Demanda (On-Demand)](#8-motor-de-central-de-riesgos-doble-ventana-de-crons-y-recálculo-a-demanda-on-demand)
 9. [Módulo de Reportes Financieros y Evolución del Capital e Inversión (MoM)](#9-módulo-de-reportes-financieros-y-evolución-del-capital-e-inversión-mom)
 11. [Protección de Usuarios Demo contra Eliminación](#11-protección-de-usuarios-demo-contra-eliminación)
+12. [Carga Masiva de Cartera y Migración desde Excel](#12-carga-masiva-de-cartera-y-migración-desde-excel)
+13. [Estándar Obligatorio de Interfaz para Modales (Slide-Over / Right-Drawer)](#13-estándar-obligatorio-de-interfaz-para-modales-slide-over--right-drawer)
 
 ---
 
@@ -977,4 +979,111 @@ sequenceDiagram
 | **9. Capital e Inversión** | - | `loans`, `loan_installments`, `expenses` | Agregación de cartera activa, ROI acumulado, serie cronológica mensual y variación porcentual MoM. |
 | **10. Purga Entorno Demo** | `loans`, `loan_installments`, `expenses`, `cron_executions` | `loans`, `users` | Eliminación atómica segura de registros > 4 días de antigüedad exclusiva para la empresa 102 a las 02:00 AM o a demanda. |
 | **11. Usuarios Demo Protegidos** | - | - | IDs `9` y `11` bloqueados en `DELETE /api/v1/user/:userId` (403 `USR_008`) y modal deshabilitado en el frontend. |
+| **12. Migración Masiva Excel** | `people`, `loans`, `loan_installments` | `company`, `user`, `people` | Ingesta de 2 hojas (`PRESTAMOS` y `PAGOS`), preview con validación cruzada y persistencia transaccional aislada de caja (`is_migrated = true`). |
+
+---
+
+## 12. Carga Masiva de Cartera y Migración desde Excel
+
+Permite a empresas que recién inician en NeoCobros importar su cartera activa o histórica desde un archivo Excel (`.xlsx`) sin alterar los arqueos de caja del día ni distorsionar la contabilidad en tiempo real.
+
+### Reglas Clave del Proceso:
+1. **Prerrequisito de Cobradores:** Todos los cobradores asignados a la cobranza deben existir en el sistema antes de iniciar la migración.
+2. **Estructura de 2 Hojas en el Libro Excel:**
+   - **Hoja 1 (`PRESTAMOS`):** Cabecera del préstamo (`CODIGO_REF`, `DNI_CLIENTE`, `NOMBRES_APELLIDOS`, `TELEFONO`, `DIRECCION`, `MONTO_PRESTADO`, `INTERES_PORCENTAJE`, `TOTAL_PAGAR`, `NUMERO_CUOTAS`, `VALOR_CUOTA`, `FECHA_INICIO`, `CUOTAS_PAGADAS`, `COBRADOR_USUARIO`).
+   - **Hoja 2 (`PAGOS`):** Detalle de abonos reales (`CODIGO_REF`, `FECHA_PAGO`, `MONTO_ABONADO`, `METODO_PAGO`).
+     - `METODO_PAGO` solo acepta estrictamente `EFECTIVO` y `YAPE`.
+3. **Comportamiento ante Hoja 2:**
+   - **Si Hoja 2 contiene datos:** Se validan fechas, montos y códigos de referencia. Se registran los pagos fidedignos en `loan_installments` con sus fechas reales y `is_migrated = true`.
+   - **Si Hoja 2 está vacía (Fallback):** El sistema toma `CUOTAS_PAGADAS` de la Hoja 1 y autogenera abonos en días hábiles (lunes a sábado, sin domingos) desde `FECHA_INICIO` hasta cubrir las cuotas indicadas con `payment_type = 'EFECTIVO'` y `is_migrated = true`.
+4. **Estados Resultantes:**
+   - Si $\text{Saldo Pendiente} > 0 \rightarrow$ Préstamo creado con `status = 'Activo'` (entra a la ruta del cobrador).
+   - Si $\text{Saldo Pendiente} \le 0 \rightarrow$ Préstamo creado con `status = 'Liquidado'` (no entra a ruta, pero nutre el historial crediticio en `people`).
+5. **Validación Previa (Preview):** El endpoint `/preview` procesa ambas hojas en memoria, detecta inconsistencias y errores por fila/hoja, y retorna el resumen semáforo (Verde, Amarillo, Rojo) sin mutar la base de datos.
+6. **Aislamiento de Caja:** Toda cuota/abono insertado lleva `is_migrated = true`, garantizando que ningún reporte ni balance diario sume ingresos del pasado.
+
+### Diagrama de Secuencia
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Administrador / Owner
+    participant PWA as Prestamos (MigrationDrawer)
+    participant API as MigrationAction / Controller
+    participant S as LoanMigrationService
+    participant DB as PostgreSQL (people, loans, loan_installments, user)
+
+    A->>PWA: Descarga plantilla oficial .xlsx y llena Hojas 1 y 2
+    A->>PWA: Sube archivo .xlsx
+    PWA->>API: POST /api/v1/loans/migration/preview (multipart/form-data)
+    API->>S: parseAndValidate(buffer, companyId)
+    S->>S: Lee Hoja 1 (PRESTAMOS) y Hoja 2 (PAGOS)
+    S->>DB: Verifica usuarios cobradores de la empresa
+    S->>S: Valida coherencia cruzada (CODIGO_REF, fechas, montos, EFECTIVO/YAPE)
+    S-->>API: PreviewResult { validRows, warningRows, errorRows, loansPreview, paymentsPreview }
+    API-->>PWA: 200 OK con resumen y detalle para ambas pestañas
+    PWA-->>A: Muestra Drawer con semáforo y preview interactivo (Pestaña Préstamos / Pestaña Pagos)
+    
+    A->>PWA: Confirma importación ("Migrar Cartera")
+    PWA->>API: POST /api/v1/loans/migration/execute (data validada / mapeada)
+    API->>S: executeMigration(command)
+    S->>DB: Inicia Transacción ACID (QueryRunner)
+    loop Por cada préstamo válido
+        S->>DB: Inserta o reutiliza titular en people (Score base 85 si nuevo)
+        S->>DB: Inserta registro en loans (is_migrated = true, status 'Activo' o 'Liquidado')
+        loop Por cada pago (de Hoja 2 o reconstruido)
+            S->>DB: Inserta en loan_installments (is_migrated = true, status 'PAID')
+        end
+    end
+    S->>DB: COMMIT Transacción
+    S-->>API: Result.ok({ migratedLoansCount, migratedPaymentsCount })
+    API-->>PWA: 200 OK con confirmación
+    PWA-->>A: Feedback exitoso y refresco automático de cartera
+```
+
+---
+
+## 13. Estándar Obligatorio de Interfaz para Modales (Slide-Over / Right-Drawer)
+
+> [!IMPORTANT]
+> **Directiva de Diseño UI/UX Obligatoria para toda la Aplicación:**  
+> En **NeoCobros**, **QUEDA ESTRICTAMENTE PROHIBIDO CREAR MODALES FLOTANTES CENTRADOS EN PANTALLA** para formularios, vistas de detalle, filtros o procesos de gestión.
+
+### Especificación de Implementación:
+1. **Comportamiento Responsivo:**
+   - **En Escritorio (`md:` en adelante):** Todo modal debe renderizarse como un **Panel Lateral Derecho (Slide-Over / Right-Drawer)** que ocupa el 100% de la altura de la ventana (`inset-y-0 right-0 h-full max-h-screen`), con fondo blanco, sombra pronunciada y animación de deslizamiento desde la derecha (`slide-in-right`).
+   - **En Dispositivos Móviles:** Debe ocupar el 100% de la pantalla o deslizarse desde la parte inferior ocupando todo el alto disponible (`h-full w-full`).
+2. **Estructura Canónica de Clases / Estilos (Referencia: `CreateLoanModal.module.css`):**
+   ```css
+   /* Overlay */
+   .overlay {
+     position: fixed;
+     inset: 0;
+     background-color: rgba(15, 23, 42, 0.4);
+     display: flex;
+     justify-content: flex-end; /* Apegado a la derecha */
+     align-items: stretch;
+     z-index: 1000;
+     backdrop-filter: blur(4px);
+   }
+
+   /* Contenedor del Drawer */
+   .modalDrawer {
+     width: 100%;
+     max-width: 480px; /* O max-w-2xl / max-w-3xl para tablas y previews */
+     height: 100vh;
+     background: #ffffff;
+     display: flex;
+     flex-direction: column;
+     box-shadow: -10px 0 25px -5px rgba(0, 0, 0, 0.1);
+     overflow: hidden;
+     animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+   }
+   ```
+3. **Estructura Interna Estándar:**
+   - **Header Fijo:** Título claro, badge de contexto y botón de cierre `✕` en la esquina superior derecha.
+   - **Body con Scroll:** Contenido con `flex-1 overflow-y-auto` y padding cómodo.
+   - **Footer Fijo:** Botones de acción (`Cancelar` y `Guardar/Confirmar`) anclados al fondo con borde divisor superior.
+4. **Regla de Auto-Aplicación:** De ahora en adelante, cualquier agente o desarrollador que cree o modifique un modal en el frontend debe ceñirse **estrictamente a este formato Right-Drawer**, sin necesidad de instrucción explícita del usuario.
+
 

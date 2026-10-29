@@ -33,6 +33,7 @@ import { ToggleDayStatusAction } from '@users/interfaces/http/v1/user/actions/to
 import { UpdateCollectionOrderAction } from '@users/interfaces/http/v1/user/actions/update-collection-order.action';
 import { CreatePersonAction } from '@users/interfaces/http/v1/people/actions/create-person.action';
 import { FindPersonAction } from '@users/interfaces/http/v1/people/actions/find-person.action';
+import { SyncPersonAction } from '@users/interfaces/http/v1/people/actions/sync-person.action';
 import { LoginAction } from '@users/interfaces/http/v1/login/actions/login.action';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -66,6 +67,7 @@ import { JwtAuthGuard } from '../security/jwt-auth.guard';
     UpdateCollectionOrderAction,
     CreatePersonAction,
     FindPersonAction,
+    SyncPersonAction,
   ],
   providers: [
     CreateUserHandler,
