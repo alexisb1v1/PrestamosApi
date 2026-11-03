@@ -20,31 +20,35 @@ export class PostgresUserRepository implements UserRepository {
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    const entity = await this.typeOrmRepository.findOne({
-      where: { username },
-    });
+    const normalizedUsername = (username || '').trim().toLowerCase();
+    const entity = await this.typeOrmRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.username) = :username', { username: normalizedUsername })
+      .getOne();
     if (!entity) return null;
     return this.toDomain(entity);
   }
 
   async findByUsernameAndSubdomain(username: string, subdomain: string): Promise<User | null> {
-    const entity = await this.typeOrmRepository.findOne({
-      where: { 
-        username,
-        company: {
-          subdomain
-        }
-      },
-      relations: { company: true },
-    });
+    const normalizedUsername = (username || '').trim().toLowerCase();
+    const normalizedSubdomain = (subdomain || '').trim().toLowerCase();
+    const entity = await this.typeOrmRepository
+      .createQueryBuilder('user')
+      .innerJoinAndSelect('user.company', 'company')
+      .where('LOWER(user.username) = :username', { username: normalizedUsername })
+      .andWhere('LOWER(company.subdomain) = :subdomain', { subdomain: normalizedSubdomain })
+      .getOne();
     if (!entity) return null;
     return this.toDomain(entity);
   }
 
   async findByUsernameAndCompany(username: string, idCompany: string): Promise<User | null> {
-    const entity = await this.typeOrmRepository.findOne({
-      where: { username, idCompany },
-    });
+    const normalizedUsername = (username || '').trim().toLowerCase();
+    const entity = await this.typeOrmRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.username) = :username', { username: normalizedUsername })
+      .andWhere('user.idCompany = :idCompany', { idCompany })
+      .getOne();
     if (!entity) return null;
     return this.toDomain(entity);
   }

@@ -46,12 +46,12 @@ export class CreateUserHandler implements ICommandHandler<
       idCompany,
     } = command;
 
-    let finalUsername = username;
+    let finalUsername = (username || '').trim().toLowerCase();
     if (profile === 'COBRADOR') {
-      finalUsername = documentNumber;
+      finalUsername = documentNumber.trim().toLowerCase();
     } else if (profile === 'ADMIN') {
-      const firstLetter = firstName.charAt(0).toLowerCase();
-      const firstLastName = lastName.split(' ')[0].toLowerCase();
+      const firstLetter = firstName.trim().charAt(0).toLowerCase();
+      const firstLastName = lastName.trim().split(' ')[0].toLowerCase();
       finalUsername = `${firstLetter}${firstLastName}`;
     }
 
