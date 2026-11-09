@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -11,6 +11,7 @@ import { RegisterLoanInstallmentCommand } from '@loans/application/commands/v1/r
 import { Result } from 'neverthrow';
 import { AppError } from '@shared/errors/app-errors';
 import { matchResult } from '@shared/http/match-result';
+import { RequestWithUser } from '@shared/interfaces/request-with-user.interface';
 
 @ApiTags('Installment')
 @ApiBearerAuth()
@@ -28,10 +29,16 @@ export class RegisterInstallmentAction {
     status: 400,
     description: 'Invalid data or payment outside date range.',
   })
+  @ApiResponse({ status: 403, description: 'Forbidden: El préstamo no pertenece a su empresa.' })
   @ApiResponse({ status: 404, description: 'Loan not found.' })
   async execute(
     @Body() dto: RegisterLoanInstallmentDto,
+    @Req() req: RequestWithUser,
   ): Promise<{ id: string }> {
+    // Forzar el userId y companyId desde el JWT autenticado (Anti-suplantación BOLA)
+    const effectiveUserId = req.user?.sub ? String(req.user.sub) : dto.userId;
+    const effectiveCompanyId = req.user?.companyId ? String(req.user.companyId) : undefined;
+
     const result = await this.commandBus.execute<
       RegisterLoanInstallmentCommand,
       Result<string, AppError>
@@ -39,8 +46,9 @@ export class RegisterInstallmentAction {
       new RegisterLoanInstallmentCommand(
         dto.loanId,
         dto.amount,
-        dto.userId,
+        effectiveUserId,
         dto.paymentType,
+        effectiveCompanyId,
       ),
     );
     return matchResult(result, (id) => ({ id }));

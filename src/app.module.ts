@@ -22,7 +22,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
       useFactory: (configService: ConfigService) => [
         {
           ttl: configService.get<number>('THROTTLE_TTL') || 60000,
-          limit: configService.get<number>('THROTTLE_LIMIT') || 60,
+          limit: configService.get<number>('THROTTLE_LIMIT') || 5,
         },
       ],
     }),
@@ -42,4 +42,4 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

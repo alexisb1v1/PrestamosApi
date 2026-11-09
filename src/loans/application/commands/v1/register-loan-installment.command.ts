@@ -4,5 +4,6 @@ export class RegisterLoanInstallmentCommand {
     public readonly amount: number,
     public readonly userId: string,
     public readonly paymentType: string,
+    public readonly companyId?: string,
   ) {}
 }

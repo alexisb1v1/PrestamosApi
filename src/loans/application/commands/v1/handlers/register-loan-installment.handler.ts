@@ -25,11 +25,16 @@ export class RegisterLoanInstallmentHandler implements ICommandHandler<
   async execute(
     command: RegisterLoanInstallmentCommand,
   ): Promise<Result<string, AppError>> {
-    const { loanId, amount, userId, paymentType } = command;
+    const { loanId, amount, userId, paymentType, companyId } = command;
 
     const loan = await this.loanRepository.findById(loanId);
     if (!loan) {
       return err('NOT_FOUND');
+    }
+
+    // 🛡️ CONTROL BOLA / OWASP API1: Validar pertenencia del préstamo a la empresa
+    if (companyId && loan.companyId && String(loan.companyId) !== String(companyId)) {
+      return err('FORBIDDEN');
     }
 
     if (!loan.canAcceptPayment(new Date())) {

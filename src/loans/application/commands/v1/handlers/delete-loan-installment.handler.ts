@@ -34,7 +34,7 @@ export class DeleteLoanInstallmentHandler implements ICommandHandler<
   async execute(
     command: DeleteLoanInstallmentCommand,
   ): Promise<Result<void, AppError>> {
-    const { installmentId } = command;
+    const { installmentId, companyId } = command;
 
     const installment = await this.repository.findById(installmentId);
     if (!installment) {
@@ -42,6 +42,18 @@ export class DeleteLoanInstallmentHandler implements ICommandHandler<
     }
 
     const loanId = installment.loanId;
+
+    // 🛡️ CONTROL BOLA / OWASP API1: Validar pertenencia del préstamo a la empresa antes de eliminar el abono
+    if (companyId) {
+      const loan = await this.loanRepository.findById(loanId);
+      if (!loan) {
+        return err('NOT_FOUND');
+      }
+      if (loan.companyId && String(loan.companyId) !== String(companyId)) {
+        return err('FORBIDDEN');
+      }
+    }
+
     await this.repository.delete(installmentId);
 
     // Verificar si el préstamo debe volver a 'Activo'

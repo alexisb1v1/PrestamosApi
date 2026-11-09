@@ -37,6 +37,7 @@ export class DeleteInstallmentAction {
   })
   @ApiResponse({ status: 400, description: 'Invalid installment ID.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 403, description: 'Forbidden: El pago no pertenece a su empresa.' })
   @ApiResponse({ status: 404, description: 'Installment not found.' })
   async execute(
     @Param('installmentId') installmentId: string,
@@ -45,11 +46,12 @@ export class DeleteInstallmentAction {
     if (!/^\d+$/.test(installmentId)) {
       throw new BadRequestException('El ID del pago debe ser un número entero válido.');
     }
-    const userId = req.user.sub;
+    const userId = String(req.user.sub);
+    const companyId = req.user.companyId ? String(req.user.companyId) : undefined;
     const result = await this.commandBus.execute<
       DeleteLoanInstallmentCommand,
       Result<void, AppError>
-    >(new DeleteLoanInstallmentCommand(installmentId, userId));
+    >(new DeleteLoanInstallmentCommand(installmentId, userId, companyId));
     return matchResult(result, () => undefined);
   }
 }
