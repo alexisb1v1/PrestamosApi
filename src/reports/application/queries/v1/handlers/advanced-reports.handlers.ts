@@ -369,7 +369,13 @@ export class GetCapitalInvestmentReportHandler implements IQueryHandler<GetCapit
     const activeInterestRemaining = Math.max(0, activeTotalRemaining - activeCapitalInStreet);
 
     // 2. Resumen Histórico Acumulado
-    let histLentQuery = `SELECT COALESCE(SUM(amount), 0) as historical_lent FROM loans WHERE status != 'Eliminado'`;
+    let histLentQuery = `
+      SELECT 
+        COALESCE(SUM(amount), 0) as historical_lent,
+        COALESCE(SUM(interest), 0) as historical_projected_interest
+      FROM loans 
+      WHERE status != 'Eliminado'
+    `;
     let histPayQuery = `
       SELECT 
         COALESCE(SUM(p.amount * (l.amount / NULLIF(l.amount + l.interest, 0))), 0) as historical_recovered,
@@ -393,6 +399,7 @@ export class GetCapitalInvestmentReportHandler implements IQueryHandler<GetCapit
     const [histExp] = await this.dataSource.query(histExpQuery, histParams);
 
     const historicalTotalLent = Number(histLent?.historical_lent || 0);
+    const historicalProjectedInterest = Number(histLent?.historical_projected_interest || 0);
     const historicalCapitalRecovered = Number(histPay?.historical_recovered || 0);
     const historicalInterestEarned = Number(histPay?.historical_interest || 0);
     const historicalExpenses = Number(histExp?.historical_expenses || 0);
@@ -518,6 +525,7 @@ export class GetCapitalInvestmentReportHandler implements IQueryHandler<GetCapit
         activeOriginalPrincipal,
         activeLoansCount,
         historicalTotalLent,
+        historicalProjectedInterest,
         historicalCapitalRecovered,
         historicalInterestEarned,
         historicalExpenses,
