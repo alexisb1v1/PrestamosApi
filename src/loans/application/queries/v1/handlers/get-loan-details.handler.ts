@@ -33,6 +33,12 @@ export class GetLoanDetailsHandler implements IQueryHandler<
     if (!loan) {
       return err('NOT_FOUND');
     }
+
+    // 🛡️ CONTROL BOLA / OWASP API1: Validar pertenencia del préstamo a la empresa
+    if (query.companyId && loan.companyId && String(loan.companyId) !== String(query.companyId)) {
+      return err('FORBIDDEN');
+    }
+
     return ok(LoanMapper.toLoanAppDto(loan));
   }
 }

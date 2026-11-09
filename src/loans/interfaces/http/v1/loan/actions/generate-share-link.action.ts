@@ -3,10 +3,11 @@ import {
   Post,
   Param,
   NotFoundException,
+  ForbiddenException,
   Inject,
   Req,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { RequestWithUser } from '@shared/interfaces/request-with-user.interface';
 import { QueryBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -45,17 +46,22 @@ export class GenerateShareLinkAction {
     status: 200,
     description: 'Share link generated successfully.',
   })
+  @ApiResponse({ status: 403, description: 'Forbidden: El préstamo no pertenece a su empresa.' })
   @ApiResponse({ status: 404, description: 'Loan not found.' })
   async execute(
     @Param('loanId') loanId: string,
-    @Req() req: Request,
+    @Req() req: RequestWithUser,
   ): Promise<{ shareUrl: string; expiresAt: number; token: string }> {
+    const companyId = req.user?.companyId ? String(req.user.companyId) : undefined;
     const result = await this.queryBus.execute<
       GetLoanDetailsQuery,
       Result<LoanAppDto, AppError>
-    >(new GetLoanDetailsQuery(loanId));
+    >(new GetLoanDetailsQuery(loanId, companyId));
 
     if (result.isErr()) {
+      if (result.error === 'FORBIDDEN') {
+        throw new ForbiddenException('No tiene permisos para generar enlaces de este préstamo.');
+      }
       throw new NotFoundException('Préstamo no encontrado.');
     }
 
@@ -108,7 +114,7 @@ export class GenerateShareLinkAction {
   /**
    * Extrae el subdominio del tenant en memoria a partir de los encabezados de la petición HTTP.
    */
-  private extractSubdomainFromHeaders(req: Request): string | null {
+  private extractSubdomainFromHeaders(req: RequestWithUser): string | null {
     // 1. Cabecera explícita X-Tenant-Subdomain enviada por la PWA
     const customHeader = req.headers['x-tenant-subdomain'];
     if (typeof customHeader === 'string' && customHeader.trim()) {

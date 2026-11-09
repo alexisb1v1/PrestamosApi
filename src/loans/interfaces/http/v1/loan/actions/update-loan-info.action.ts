@@ -1,4 +1,5 @@
-import { Controller, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Patch, Param, Body, Req } from '@nestjs/common';
+import { RequestWithUser } from '@shared/interfaces/request-with-user.interface';
 import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -29,15 +30,18 @@ export class UpdateLoanInfoAction {
     status: 200,
     description: 'Loan information updated successfully.',
   })
+  @ApiResponse({ status: 403, description: 'Forbidden: El préstamo no pertenece a su empresa.' })
   @ApiResponse({ status: 404, description: 'Loan not found.' })
   async execute(
     @Param('loanId') loanId: string,
     @Body() dto: UpdateLoanInfoDto,
+    @Req() req: RequestWithUser,
   ): Promise<void> {
+    const companyId = req.user?.companyId ? String(req.user.companyId) : undefined;
     const result = await this.commandBus.execute<
       UpdateLoanInfoCommand,
       Result<void, AppError>
-    >(new UpdateLoanInfoCommand(loanId, dto.phone, dto.address));
+    >(new UpdateLoanInfoCommand(loanId, dto.phone, dto.address, companyId));
     return matchResult(result, () => undefined, {
       NOT_FOUND: `Préstamo con ID ${loanId} no encontrado.`,
     });

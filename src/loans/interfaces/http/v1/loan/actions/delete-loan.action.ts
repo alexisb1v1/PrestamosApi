@@ -1,4 +1,5 @@
-import { Controller, Delete, Param, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Param, UseGuards, Req } from '@nestjs/common';
+import { RequestWithUser } from '@shared/interfaces/request-with-user.interface';
 import { CommandBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -33,14 +34,18 @@ export class DeleteLoanAction {
   })
   @ApiResponse({
     status: 403,
-    description: 'Forbidden. Only ADMIN or OWNER can delete loans.',
+    description: 'Forbidden. Only ADMIN or OWNER can delete loans, or loan does not belong to company.',
   })
   @ApiResponse({ status: 404, description: 'Loan not found.' })
-  async execute(@Param('loanId') loanId: string): Promise<void> {
+  async execute(
+    @Param('loanId') loanId: string,
+    @Req() req: RequestWithUser,
+  ): Promise<void> {
+    const companyId = req.user?.companyId ? String(req.user.companyId) : undefined;
     const result = await this.commandBus.execute<
       DeleteLoanCommand,
       Result<void, AppError>
-    >(new DeleteLoanCommand(loanId));
+    >(new DeleteLoanCommand(loanId, companyId));
     return matchResult(result, () => undefined, {
       NOT_FOUND: `Préstamo con ID ${loanId} no encontrado.`,
     });

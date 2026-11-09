@@ -1,4 +1,5 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Req } from '@nestjs/common';
+import { RequestWithUser } from '@shared/interfaces/request-with-user.interface';
 import { QueryBus } from '@nestjs/cqrs';
 import {
   ApiOperation,
@@ -30,14 +31,17 @@ export class GetLoanDetailsAction {
     description: 'Loan details retrieved successfully.',
     type: LoanDetailsResponseDto,
   })
+  @ApiResponse({ status: 403, description: 'Forbidden: El préstamo no pertenece a su empresa.' })
   @ApiResponse({ status: 404, description: 'Loan not found.' })
   async execute(
     @Param('loanId') loanId: string,
+    @Req() req: RequestWithUser,
   ): Promise<LoanDetailsResponseDto> {
+    const companyId = req.user?.companyId ? String(req.user.companyId) : undefined;
     const result = await this.queryBus.execute<
       GetLoanDetailsQuery,
       Result<LoanAppDto, AppError>
-    >(new GetLoanDetailsQuery(loanId));
+    >(new GetLoanDetailsQuery(loanId, companyId));
     return matchResult(result, (loan) => new LoanDetailsResponseDto(loan));
   }
 }

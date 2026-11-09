@@ -1,3 +1,6 @@
 export class GetLoanDetailsQuery {
-  constructor(public readonly loanId: string) {}
+  constructor(
+    public readonly loanId: string,
+    public readonly companyId?: string,
+  ) {}
 }

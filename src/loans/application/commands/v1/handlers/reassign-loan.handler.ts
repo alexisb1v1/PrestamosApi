@@ -26,11 +26,16 @@ export class ReassignLoanHandler implements ICommandHandler<
    * @returns `Result.err('NOT_FOUND')` si el préstamo no existe.
    */
   async execute(command: ReassignLoanCommand): Promise<Result<void, AppError>> {
-    const { loanId, newUserId } = command;
+    const { loanId, newUserId, companyId } = command;
 
     const loan = await this.loanRepository.findById(loanId);
     if (!loan) {
       return err('NOT_FOUND');
+    }
+
+    // 🛡️ CONTROL BOLA / OWASP API1: Validar pertenencia del préstamo a la empresa
+    if (companyId && loan.companyId && String(loan.companyId) !== String(companyId)) {
+      return err('FORBIDDEN');
     }
 
     loan.userId = newUserId;

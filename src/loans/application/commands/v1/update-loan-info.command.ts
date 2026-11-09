@@ -3,5 +3,6 @@ export class UpdateLoanInfoCommand {
     public readonly id: string,
     public readonly phone: string,
     public readonly address: string,
+    public readonly companyId?: string,
   ) {}
 }
