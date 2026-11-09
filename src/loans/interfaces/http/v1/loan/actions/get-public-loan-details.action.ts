@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import { ApiOperation, ApiResponse, ApiTags, ApiParam } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { GetLoanDetailsQuery } from '@loans/application/queries/v1/get-loan-details.query';
 import { PublicLoanDetailsResponseDto } from '../dto/public-loan-details.response.dto';
 import { LoanAppDto } from '@loans/application/queries/v1/dto/loan-app.dto';
@@ -29,6 +30,7 @@ export class GetPublicLoanDetailsAction {
     private readonly companyRepository: CompanyRepository,
   ) {}
 
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // 🛡️ Anti-DoS y Anti-Scraping: Máximo 20 peticiones por minuto por IP
   @Get('public-share/:token')
   @ApiOperation({
     summary:
@@ -41,6 +43,7 @@ export class GetPublicLoanDetailsAction {
     type: PublicLoanDetailsResponseDto,
   })
   @ApiResponse({ status: 403, description: 'Invalid or manipulated token.' })
+  @ApiResponse({ status: 429, description: 'Too Many Requests - Límite de consultas públicas excedido.' })
   async execute(
     @Param('token') token: string,
   ): Promise<PublicLoanDetailsResponseDto> {
