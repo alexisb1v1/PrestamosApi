@@ -474,7 +474,28 @@ export class PostgresLoanRepository implements LoanRepository {
     const historicalLent = Number(globalLentRaw?.historicalLent ?? 0);
 
     let thermometer = 0;
-    if (historicalLent > 0) {
+
+    // Verificar si la empresa tiene un capital declarado o inicial registrado
+    let baseCapital = 0;
+    if (companyId) {
+      const [comp] = await this.typeOrmRepository.manager.query(
+        `SELECT initial_capital, settings FROM company WHERE id = $1`,
+        [companyId],
+      );
+      if (comp) {
+        const declared = comp.settings?.financial?.current_capital ?? comp.initial_capital;
+        if (declared !== null && declared !== undefined) {
+          baseCapital = Number(declared);
+        }
+      }
+    }
+
+    if (baseCapital > 0) {
+      // Si tiene capital declarado: % de retorno sobre el capital base inyectado
+      const capitalRecovered = historicalCollected - historicalCollected * 0.2;
+      thermometer = (capitalRecovered / baseCapital) * 100;
+    } else if (historicalLent > 0) {
+      // Fallback: cálculo tradicional sobre el total prestado histórico
       const capitalRecovered = historicalCollected - historicalCollected * 0.2;
       thermometer = (capitalRecovered / historicalLent) * 100;
     }

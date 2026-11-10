@@ -31,6 +31,9 @@ export class CompanyEntity {
   @Column({ name: 'settings', type: 'jsonb', nullable: true, default: () => "'{}'" })
   settings?: Record<string, any>;
 
+  @Column({ name: 'initial_capital', type: 'numeric', precision: 12, scale: 2, nullable: true })
+  initialCapital?: number | null;
+
   @Column({ name: 'is_demo', type: 'boolean', default: false })
   isDemo: boolean;
 }

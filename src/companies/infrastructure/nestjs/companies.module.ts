@@ -27,6 +27,7 @@ import { GetCompanyPublicInfoAction } from '@companies/interfaces/http/v1/compan
 import { RefreshCompanyKeyTokenAction } from '@companies/interfaces/http/v1/company/actions/refresh-company-key-token.action';
 import { GetMyCompanyAction } from '@companies/interfaces/http/v1/company/actions/get-my-company.action';
 import { UpdateCompanySettingsAction } from '@companies/interfaces/http/v1/company/actions/update-company-settings.action';
+import { UpdateCompanyCapitalAction } from '@companies/interfaces/http/v1/company/actions/update-company-capital.action';
 
 import { RedisModule } from '@shared/redis/redis.module';
 
@@ -53,6 +54,7 @@ const Controllers = [
   RefreshCompanyKeyTokenAction,
   GetMyCompanyAction,
   UpdateCompanySettingsAction,
+  UpdateCompanyCapitalAction,
 ];
 
 @Module({

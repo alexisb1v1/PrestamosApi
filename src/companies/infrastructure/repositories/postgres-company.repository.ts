@@ -70,6 +70,7 @@ export class PostgresCompanyRepository implements CompanyRepository {
       entity.keyToken = company.keyToken;
     }
     entity.settings = company.settings || {};
+    entity.initialCapital = company.initialCapital ?? null;
     entity.isDemo = company.isDemo ?? false;
     return entity;
   }
@@ -85,6 +86,7 @@ export class PostgresCompanyRepository implements CompanyRepository {
       entity.keyToken,
       entity.settings || {},
       entity.isDemo ?? false,
+      entity.initialCapital !== undefined ? entity.initialCapital : null,
     );
   }
 }

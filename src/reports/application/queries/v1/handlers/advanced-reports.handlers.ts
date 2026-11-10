@@ -67,6 +67,72 @@ export class GetConsolidatedReportHandler implements IQueryHandler<GetConsolidat
     const dailyCollectionsRaw = await this.dataSource.query(dailyQueryStr, params);
     const [expectedGlobal] = await this.dataSource.query(expectedGlobalQuery, params);
 
+    // Consulta de liquidez y capital disponible
+    let currentDeclaredCapital: number | null = null;
+    let availableCashInHand: number | null = null;
+    let activeCapitalInStreet: number = 0;
+
+    if (companyId) {
+      const [comp] = await this.dataSource.query(
+        `SELECT initial_capital, settings FROM company WHERE id = $1`,
+        [companyId],
+      );
+
+      // Consulta de histórico acumulado de la empresa
+      const [histLent] = await this.dataSource.query(
+        `SELECT COALESCE(SUM(amount), 0) as historical_lent FROM loans WHERE status != 'Eliminado' AND id_company = $1`,
+        [companyId],
+      );
+      const [histPay] = await this.dataSource.query(
+        `SELECT 
+           COALESCE(SUM(p.amount * (l.amount / NULLIF(l.amount + l.interest, 0))), 0) as historical_recovered,
+           COALESCE(SUM(p.amount * (l.interest / NULLIF(l.amount + l.interest, 0))), 0) as historical_interest
+         FROM loan_installments p
+         JOIN loans l ON p.loan_id = l.id
+         WHERE l.status != 'Eliminado' AND l.id_company = $1`,
+        [companyId],
+      );
+      const [histExp] = await this.dataSource.query(
+        `SELECT COALESCE(SUM(amount), 0) as historical_expenses FROM expenses WHERE status != 'ELIMINADO' AND id_company = $1`,
+        [companyId],
+      );
+
+      const [streetData] = await this.dataSource.query(
+        `SELECT COALESCE(SUM(amount), 0) as active_principal,
+                COALESCE(SUM(amount + interest), 0) as active_total
+         FROM loans WHERE status = 'Activo' AND id_company = $1`,
+        [companyId],
+      );
+      const [paidOnActive] = await this.dataSource.query(
+        `SELECT COALESCE(SUM(p.amount * (l.amount / NULLIF(l.amount + l.interest, 0))), 0) as active_paid_principal
+         FROM loan_installments p
+         JOIN loans l ON p.loan_id = l.id
+         WHERE l.status = 'Activo' AND l.id_company = $1`,
+        [companyId],
+      );
+
+      activeCapitalInStreet = Math.max(
+        0,
+        Number(streetData?.active_principal || 0) - Number(paidOnActive?.active_paid_principal || 0),
+      );
+
+      if (comp) {
+        const declared = comp.settings?.financial?.current_capital ?? comp.initial_capital;
+        if (declared !== null && declared !== undefined) {
+          currentDeclaredCapital = Number(declared);
+          availableCashInHand = Number(
+            (
+              currentDeclaredCapital +
+              Number(histPay?.historical_recovered || 0) +
+              Number(histPay?.historical_interest || 0) -
+              Number(histLent?.historical_lent || 0) -
+              Number(histExp?.historical_expenses || 0)
+            ).toFixed(2),
+          );
+        }
+      }
+    }
+
     return {
       totalCollected: Number(collections.total_collected || 0),
       cashCollected: Number(collections.cash_collected || 0),
@@ -76,6 +142,9 @@ export class GetConsolidatedReportHandler implements IQueryHandler<GetConsolidat
       totalExpenses: Number(expenses.total_expenses || 0),
       expectedAmount: Number(expectedGlobal?.expected_amount || 0),
       netBalance: Number(collections.total_collected || 0) - Number(expenses.total_expenses || 0),
+      currentDeclaredCapital,
+      availableCashInHand,
+      activeCapitalInStreet,
       dailyCollections: dailyCollectionsRaw.map((d: any) => ({
         date: d.date,
         amount: Number(d.amount)
@@ -411,6 +480,32 @@ export class GetCapitalInvestmentReportHandler implements IQueryHandler<GetCapit
       ? Number(((netProfit / historicalInterestEarned) * 100).toFixed(1))
       : 0;
 
+    // 2.1 Consulta del Capital Declarado y Caja Disponible Teórica
+    let currentDeclaredCapital: number | null = null;
+    let availableCashInHand: number | null = null;
+    if (companyId) {
+      const [comp] = await this.dataSource.query(
+        `SELECT initial_capital, settings FROM company WHERE id = $1`,
+        [companyId],
+      );
+      if (comp) {
+        const declared = comp.settings?.financial?.current_capital ?? comp.initial_capital;
+        if (declared !== null && declared !== undefined) {
+          currentDeclaredCapital = Number(declared);
+          // Fórmula Maestra: Capital Declarado + Capital Retornado + Intereses Cobrados - Total Prestado - Gastos
+          availableCashInHand = Number(
+            (
+              currentDeclaredCapital +
+              historicalCapitalRecovered +
+              historicalInterestEarned -
+              historicalTotalLent -
+              historicalExpenses
+            ).toFixed(2),
+          );
+        }
+      }
+    }
+
     // 3. Serie Mensual Agregada de los últimos N meses
     let seriesQuery = `
       WITH months_series AS (
@@ -532,6 +627,8 @@ export class GetCapitalInvestmentReportHandler implements IQueryHandler<GetCapit
         netProfit,
         roi,
         profitMarginOnInterest,
+        currentDeclaredCapital,
+        availableCashInHand,
       },
       monthlyEvolution,
     };

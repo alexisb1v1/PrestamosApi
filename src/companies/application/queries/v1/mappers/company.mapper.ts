@@ -12,6 +12,7 @@ export class CompanyMapper {
       subdomain: company.subdomain,
       keyToken: company.keyToken,
       settings: company.settings,
+      initialCapital: company.initialCapital ?? null,
       isDemo: company.isDemo,
     };
   }

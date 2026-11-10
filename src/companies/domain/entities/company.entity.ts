@@ -8,6 +8,7 @@ export class Company {
   subdomain?: string;
   keyToken?: string;
   settings?: Record<string, any>;
+  initialCapital?: number | null;
   isDemo?: boolean;
 
   constructor(
@@ -20,6 +21,7 @@ export class Company {
     keyToken?: string,
     settings?: Record<string, any>,
     isDemo?: boolean,
+    initialCapital?: number | null,
   ) {
     this.id = id;
     this.companyName = companyName;
@@ -30,6 +32,7 @@ export class Company {
     this.keyToken = keyToken;
     this.settings = settings || {};
     this.isDemo = isDemo ?? false;
+    this.initialCapital = initialCapital !== undefined ? (initialCapital !== null ? Number(initialCapital) : null) : null;
   }
 
   getNormalizedStatus(): string {

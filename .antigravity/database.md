@@ -118,10 +118,27 @@ Representa a cada organización o empresa cliente dentro del modelo SaaS multi-t
 | `subdomain` | `VARCHAR` | `NULL` | **UNIQUE / INDEX** | `NULL` | Subdominio web para acceso SaaS (`nombreEmpresa.neocobros.com`). |
 | `key_token` | `VARCHAR(64)` | `NOT NULL` | **UNIQUE / INDEX** | | Llave criptográfica secreta del tenant (ej: `cmp_a8f29c41d7e0b583`). Se sella en el JWT para validación por Clave Compuesta y actúa como *Kill-Switch* instantáneo. |
 | `settings` | `JSONB` | `NOT NULL` | | `'{}'::jsonb` | Configuración granular del tenant (flags de módulos opcionales como `risk_scoring`, preferencias de crédito, etc.). |
+| `initial_capital` | `NUMERIC(12,2)` | `NULL` | | `NULL` | Capital inicial declarado por el Administrador. Si es `NULL`, la PWA/Frontend activa el modal obligatorio de onboarding. |
+| `is_demo` | `BOOLEAN` | `NOT NULL` | | `false` | Indica si el tenant es una cuenta de prueba/demostración. |
 
 #### Estructura del JSONB `company.settings`:
 ```json
 {
+  "financial": {
+    "current_capital": 3000.00,
+    "capital_history": [
+      {
+        "id": 1,
+        "date": "2026-11-01T10:00:00.000Z",
+        "previous_capital": 0.00,
+        "amount_injected": 2000.00,
+        "new_capital": 2000.00,
+        "type": "INITIAL_CAPITAL",
+        "registered_by": "mramirez",
+        "note": "Capital inicial para apertura de operaciones"
+      }
+    ]
+  },
   "features": {
     "risk_scoring": true,             // Habilita la evaluación previa de Central de Riesgos en el registro de préstamos
     "customer_report": true           // Habilita el reporte integral de salud crediticia por cliente

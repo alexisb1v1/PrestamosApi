@@ -27,6 +27,9 @@ export class CompanyResponseDto {
   @ApiProperty({ required: false })
   settings?: Record<string, any>;
 
+  @ApiProperty({ required: false, nullable: true })
+  initialCapital?: number | null;
+
   @ApiProperty({ required: false })
   isDemo?: boolean;
 
@@ -51,6 +54,7 @@ export class CompanyResponseDto {
     this.subdomain = company.subdomain;
     this.keyToken = company.keyToken;
     this.settings = company.settings;
+    this.initialCapital = company.initialCapital ?? null;
     this.isDemo = company.isDemo;
   }
 }
